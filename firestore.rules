@@ -2,15 +2,64 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
     function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+      return signedIn() && request.auth.token.role == 'admin';
+    }
+
+    function isScore(v) {
+      return v is int && v >= 0 && v <= 100;
+    }
+
+    function isCount(v) {
+      return v is int && v >= 0;
+    }
+
+    function validDocument(d) {
+      return d.keys().hasAll(['title', 'fileName', 'mimeType', 'sizeBytes', 'sha256', 'authorId', 'version',
+                              'score', 'previousScore', 'delta', 'volatility', 'signals', 'conflictsWith', 'reviewRequested'])
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 200
+        && d.sizeBytes is int && d.sizeBytes >= 0
+        && d.sha256 is string && d.sha256.size() == 64
+        && d.version is int && d.version >= 1
+        && isScore(d.score) && isScore(d.previousScore) && isScore(d.volatility)
+        && d.delta is int && d.delta >= -100 && d.delta <= 100
+        && isCount(d.signals.expertValidations) && isCount(d.signals.successfulUses)
+        && isCount(d.signals.views) && isCount(d.signals.confirmations) && isCount(d.signals.contradictions)
+        && d.conflictsWith is list && d.reviewRequested is bool;
     }
 
     // Un utilisateur lit son propre profil, l'admin lit tous les profils.
     // Aucune écriture côté client : tout passe par les Cloud Functions.
     match /profiles/{uid} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow write: if false;
+    }
+
+    // TODO : filtrer la lecture selon le score et l'accréditation (request.auth.token.clearance)
+    match /documents/{docId} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validDocument(request.resource.data);
+      allow delete: if isAdmin();
+
+      // Fichier en base64 ; limite Firestore de 1 Mio par document
+      match /content/{contentId} {
+        allow read: if signedIn();
+        allow write: if isAdmin()
+          && request.resource.data.base64 is string
+          && request.resource.data.base64.size() <= 1000000;
+        allow delete: if isAdmin();
+      }
+
+      // Historique des scores : ajout uniquement, jamais modifié
+      match /scoreHistory/{eventId} {
+        allow read: if signedIn();
+        allow create: if isAdmin() && isScore(request.resource.data.score) && request.resource.data.reason is string;
+        allow update, delete: if false;
+      }
     }
 
     // Tout le reste est fermé par défaut
