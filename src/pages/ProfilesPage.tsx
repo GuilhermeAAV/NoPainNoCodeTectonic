@@ -1,8 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import GradeBadge from '@/components/expertise/GradeBadge'
 import Button from '@/components/ui/Button'
+import { listExpertise, rebuildExpertise } from '@/services/expertise'
 import { MIN_PASSWORD_LENGTH, createProfile, deleteProfile, listProfiles } from '@/services/profiles'
-import type { NewProfile, Profile } from '@/types'
+import type { Expertise, NewProfile, Profile } from '@/types'
 import { clearanceLabel } from '@/utils/clearance'
+import { domainInfo, type DomainId } from '@/utils/expertise'
+
+// Nombre de domaines affichés par profil, les mieux notés d'abord
+const TOP_DOMAINS = 3
 
 const emptyForm: NewProfile = { firstName: '', lastName: '', email: '', clearance: 50, password: '' }
 
@@ -14,12 +20,38 @@ export default function ProfilesPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [expertise, setExpertise] = useState<Map<string, Expertise>>(new Map())
+  const [rebuilding, setRebuilding] = useState(false)
 
   const refresh = () =>
-    listProfiles()
-      .then(setProfiles)
+    Promise.all([listProfiles(), listExpertise().catch(() => [])])
+      .then(([p, x]) => {
+        setProfiles(p)
+        setExpertise(new Map(x.map((e) => [e.id, e])))
+      })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingList(false))
+
+  const handleRebuild = async () => {
+    setError(null)
+    setSuccess(null)
+    setRebuilding(true)
+    try {
+      const res = await rebuildExpertise()
+      await refresh()
+      setSuccess(`Grades recalculated for ${res.profiles} profiles from ${res.validations} validations.`)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setRebuilding(false)
+    }
+  }
+
+  const topDomains = (id: string) =>
+    Object.entries(expertise.get(id)?.domains ?? {})
+      .sort(([, a], [, b]) => b.points - a.points)
+      .slice(0, TOP_DOMAINS)
+      .map(([domain, x]) => ({ domain: domainInfo(domain as DomainId), ...x }))
 
   useEffect(() => {
     refresh()
@@ -32,7 +64,7 @@ export default function ProfilesPage() {
     setError(null)
     setSuccess(null)
     if (form.password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.')
+      setError('Passwords don’t match. Enter the same password in both fields.')
       return
     }
     setSubmitting(true)
@@ -41,7 +73,7 @@ export default function ProfilesPage() {
       await refresh()
       setForm(emptyForm)
       setConfirmPassword('')
-      setSuccess(`Profil de ${profile.firstName} ${profile.lastName} créé.`)
+      setSuccess(`Profile created for ${profile.firstName} ${profile.lastName}.`)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -50,7 +82,7 @@ export default function ProfilesPage() {
   }
 
   const handleDelete = async (profile: Profile) => {
-    if (!confirm(`Supprimer le profil de ${profile.firstName} ${profile.lastName} ?`)) return
+    if (!confirm(`Delete the profile of ${profile.firstName} ${profile.lastName}?`)) return
     setError(null)
     try {
       await deleteProfile(profile.id)
@@ -62,37 +94,37 @@ export default function ProfilesPage() {
 
   return (
     <section>
-      <h1>Profils</h1>
+      <h1>Profiles</h1>
 
       <form className="card form form--grid" onSubmit={handleSubmit}>
-        <h2>Nouveau profil</h2>
+        <h2>New profile</h2>
         <label className="field">
-          <span>Nom</span>
+          <span>Last name</span>
           <input className="input" value={form.lastName} onChange={(e) => update('lastName', e.target.value)} required />
         </label>
         <label className="field">
-          <span>Prénom</span>
+          <span>First name</span>
           <input className="input" value={form.firstName} onChange={(e) => update('firstName', e.target.value)} required />
         </label>
         <label className="field">
-          <span>Adresse mail</span>
+          <span>Email</span>
           <input className="input" type="email" value={form.email} onChange={(e) => update('email', e.target.value)} required />
         </label>
         <label className="field">
-          <span>Mot de passe</span>
+          <span>Password</span>
           <input
             className="input"
             type="password"
             autoComplete="new-password"
             minLength={MIN_PASSWORD_LENGTH}
-            placeholder={`${MIN_PASSWORD_LENGTH} caractères minimum`}
+            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
             value={form.password}
             onChange={(e) => update('password', e.target.value)}
             required
           />
         </label>
         <label className="field">
-          <span>Confirmer le mot de passe</span>
+          <span>Confirm password</span>
           <input
             className="input"
             type="password"
@@ -104,7 +136,7 @@ export default function ProfilesPage() {
         </label>
         <label className="field">
           <span>
-            Niveau d'accréditation : <strong>{form.clearance}</strong> ({clearanceLabel(form.clearance)})
+            Clearance level: <strong>{form.clearance}</strong> ({clearanceLabel(form.clearance)})
           </span>
           <div className="clearance-input">
             <input
@@ -130,22 +162,28 @@ export default function ProfilesPage() {
         {success && <p className="form__success">{success}</p>}
         <div>
           <Button type="submit" disabled={submitting}>
-            Créer le profil
+            Create profile
           </Button>
         </div>
       </form>
 
       <div className="card table-wrap">
-        <h2>
-          {loadingList ? 'Chargement…' : `${profiles.length} profil${profiles.length > 1 ? 's' : ''}`}
-        </h2>
+        <div className="table-head">
+          <h2>
+            {loadingList ? 'Loading…' : `${profiles.length} profile${profiles.length === 1 ? '' : 's'}`}
+          </h2>
+          <Button variant="secondary" className="btn--small" onClick={handleRebuild} disabled={rebuilding}>
+            {rebuilding ? 'Recalculating…' : 'Recalculate grades'}
+          </Button>
+        </div>
         <table className="table">
           <thead>
             <tr>
-              <th>Nom</th>
-              <th>Prénom</th>
-              <th>Adresse mail</th>
-              <th>Accréditation</th>
+              <th>Last name</th>
+              <th>First name</th>
+              <th>Email</th>
+              <th>Clearance</th>
+              <th>Expertise</th>
               <th />
             </tr>
           </thead>
@@ -165,9 +203,23 @@ export default function ProfilesPage() {
                   </div>
                 </td>
                 <td>
+                  {topDomains(p.id).length === 0 ? (
+                    <span className="muted">No validations yet</span>
+                  ) : (
+                    <ul className="expertise-list">
+                      {topDomains(p.id).map((x) => (
+                        <li key={x.domain.id} title={`${x.points} pts · ${x.validations} validations`}>
+                          <GradeBadge grade={x.grade} domain={x.domain.label} />
+                          <span>{x.domain.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
+                <td>
                   {p.role !== 'admin' && (
                     <Button variant="secondary" className="btn--small" onClick={() => handleDelete(p)}>
-                      Supprimer
+                      Delete
                     </Button>
                   )}
                 </td>

@@ -28,6 +28,12 @@ service cloud.firestore {
       return v is int && v >= 0;
     }
 
+    // Domaines d'expertise (miroir de src/utils/expertise.ts et functions/index.js)
+    function isDomain(v) {
+      return v in ['cybersecurite', 'droit-affaires', 'donnees-personnelles', 'conformite', 'finance',
+                   'fiscalite', 'rh', 'infrastructure', 'developpement', 'operations'];
+    }
+
     function validDocument(d) {
       return d.keys().hasAll(['title', 'fileName', 'mimeType', 'sizeBytes', 'sha256', 'authorId', 'version',
                               'score', 'previousScore', 'delta', 'volatility', 'signals', 'conflictsWith', 'reviewRequested'])
@@ -39,7 +45,9 @@ service cloud.firestore {
         && d.delta is int && d.delta >= -100 && d.delta <= 100
         && isCount(d.signals.expertValidations) && isCount(d.signals.successfulUses)
         && isCount(d.signals.views) && isCount(d.signals.confirmations) && isCount(d.signals.contradictions)
-        && d.conflictsWith is list && d.reviewRequested is bool;
+        && d.conflictsWith is list && d.reviewRequested is bool
+        // Facultatif pour les documents créés avant l'introduction des domaines
+        && (!('domain' in d) || isDomain(d.domain));
     }
 
     // Une ligne du journal des mouvements : la variation doit être cohérente avec les scores
@@ -86,6 +94,36 @@ service cloud.firestore {
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
         allow write: if false;
       }
+    }
+
+    // Notes d'expertise par domaine : l'intéressé et l'admin lisent, validateDocument / rebuildExpertise écrivent.
+    // Les autres utilisateurs ne voient les experts qu'au travers de la Cloud Function recommendExperts.
+    // Écriture admin autorisée pour les experts de démonstration (scripts/seed-experts.mjs).
+    match /expertise/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+
+    // Demandes de revue (id = {documentId}_{expertId}) : visibles par l'expert sollicité, le demandeur et l'admin.
+    // Création et changements de statut uniquement via requestReview / respondReviewRequest / validateDocument.
+    match /reviewRequests/{requestId} {
+      allow read: if isAdmin()
+        || (signedIn() && (resource.data.expertId == request.auth.uid || resource.data.requesterId == request.auth.uid));
+      allow write: if false;
+    }
+
+    // Tableau de bord Trust Radar : lecture pour les connectés, écriture admin (scripts/seed-dashboard.mjs)
+    match /health/{statId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /conflicts/{conflictId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /gaps/{gapId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
     // Tout le reste est fermé par défaut

@@ -8,6 +8,7 @@ import DocumentPage from '@/pages/DocumentPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import LoginPage from '@/pages/LoginPage'
 import ProfilesPage from '@/pages/ProfilesPage'
+import RequestsPage from '@/pages/RequestsPage'
 import RequireAdmin from '@/components/auth/RequireAdmin'
 
 export const router = createBrowserRouter([
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'documents/:id', element: <DocumentPage /> },
+      { path: 'requests', element: <RequestsPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'login', element: <LoginPage /> },
       {

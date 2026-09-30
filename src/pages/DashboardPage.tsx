@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   BadgeCheck,
@@ -20,14 +20,16 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import { fetchDashboard, type DashboardData } from '@/services/dashboard'
+import fallbackData from '@/data/dashboard.json'
 
 /* -------------------------------------------------------------------------- */
-/*  Types & mock data                                                         */
+/*  Types & fallback data                                                        */
 /* -------------------------------------------------------------------------- */
 
-type Tone = 'danger' | 'warn' | 'ok'
+export type Tone = 'danger' | 'warn' | 'ok'
 
-interface Source {
+export interface Source {
   id: string
   name: string
   kind: 'pdf' | 'chat' | 'wiki'
@@ -45,7 +47,7 @@ interface Source {
   confidence: number
 }
 
-interface Conflict {
+export interface Conflict {
   id: string
   topic: string
   context: string
@@ -58,7 +60,7 @@ interface Conflict {
   sources: [Source, Source]
 }
 
-interface Gap {
+export interface Gap {
   id: string
   query: string
   count: number
@@ -67,174 +69,8 @@ interface Gap {
   weekly: number[]
 }
 
-const MOCK_BACKEND = {
-  scannedDocs: 1284,
-  lastScan: '4 min ago',
-  health: {
-    score: 78,
-    scoreDelta: -2,
-    official: 64,
-    current: 81,
-    consistent: 88,
-    conflicts: 12,
-    conflictsDelta: 3,
-    conflictsWeekly: [6, 7, 7, 9, 9, 10, 12],
-    gaps: 5,
-    gapsRising: 2,
-    gapsWeekly: [3, 3, 4, 4, 4, 5, 5],
-  },
-  conflicts: [
-    {
-      id: 'c-1042',
-      topic: 'Belgian holiday pay allowance',
-      context: 'Full-time employee, started 2024',
-      detected: 'Detected 2 hours ago',
-      severity: 'High',
-      difference: '5 days apart',
-      flags: ['Answers differ by 5 days', 'Official source is outdated', 'Newer source is unofficial'],
-      verdict:
-        'The approved HR manual predates the 2025 revision, and the newer answer only exists in a chat thread. Neither source is both current and official, so the answer should not be shown to employees as settled.',
-      expert: 'Belgian payroll expert',
-      sources: [
-        {
-          id: 'src-a',
-          name: 'HR Manual.pdf',
-          kind: 'pdf',
-          location: 'SharePoint / HR / Policies',
-          status: 'Outdated',
-          tone: 'danger',
-          value: '20',
-          unit: 'days',
-          excerpt: 'Full-time employees are entitled to 20 days of annual holiday allowance.',
-          highlight: '20 days',
-          updated: 'Mar 2023',
-          age: '3 years old',
-          official: true,
-          owner: 'HR Policy Team',
-          confidence: 45,
-        },
-        {
-          id: 'src-b',
-          name: 'Payroll Teams channel',
-          kind: 'chat',
-          location: 'Teams / Payroll Support',
-          status: 'Recent, unofficial',
-          tone: 'warn',
-          value: '25',
-          unit: 'days',
-          excerpt: 'Confirmed with legal: the allowance is now 25 days for new full-time hires.',
-          highlight: '25 days',
-          updated: 'Feb 2026',
-          age: '8 months old',
-          official: false,
-          owner: 'Posted by a team member',
-          confidence: 60,
-        },
-      ],
-    },
-    {
-      id: 'c-1038',
-      topic: 'Notice period after 5 years of service',
-      context: 'Employees dismissed by the employer',
-      detected: 'Detected yesterday',
-      severity: 'High',
-      difference: '1 month apart',
-      flags: ['Answers differ by 1 month', 'Wiki page is still a draft'],
-      verdict:
-        'The collective agreement is official but has not been reviewed since 2022. The wiki draft reflects newer guidance but was never approved, so employees could receive either answer.',
-      expert: 'Belgian employment law expert',
-      sources: [
-        {
-          id: 'src-c',
-          name: 'Collective agreement.pdf',
-          kind: 'pdf',
-          location: 'SharePoint / Legal / Agreements',
-          status: 'Official, not reviewed',
-          tone: 'warn',
-          value: '3',
-          unit: 'months',
-          excerpt: 'After five years of service the notice period is 3 months.',
-          highlight: '3 months',
-          updated: 'Jun 2022',
-          age: '4 years old',
-          official: true,
-          owner: 'Legal Department',
-          confidence: 62,
-        },
-        {
-          id: 'src-d',
-          name: 'Payroll wiki: Termination',
-          kind: 'wiki',
-          location: 'Wiki / Payroll / Termination',
-          status: 'Draft',
-          tone: 'danger',
-          value: '4',
-          unit: 'months',
-          excerpt: 'For service of five years or more, plan for a 4 months notice period.',
-          highlight: '4 months',
-          updated: 'Sep 2025',
-          age: '1 year old',
-          official: false,
-          owner: 'Wiki contributor',
-          confidence: 38,
-        },
-      ],
-    },
-    {
-      id: 'c-1031',
-      topic: 'Company car tax deduction rate',
-      context: 'Hybrid vehicles ordered in 2025',
-      detected: 'Detected 3 days ago',
-      severity: 'Medium',
-      difference: '25 points apart',
-      flags: ['Answers differ by 25 points', 'Circular may be superseded'],
-      verdict:
-        'The fiscal circular is the official reference but may have been superseded by later legislation. The wiki quotes a lower rate without naming its source.',
-      expert: 'Belgian tax expert',
-      sources: [
-        {
-          id: 'src-e',
-          name: 'Fiscal circular 2024.pdf',
-          kind: 'pdf',
-          location: 'SharePoint / Finance / Tax',
-          status: 'Official, may be superseded',
-          tone: 'warn',
-          value: '75',
-          unit: '%',
-          excerpt: 'The deductible share for hybrid company cars is 75% of costs.',
-          highlight: '75%',
-          updated: 'Jan 2024',
-          age: '2 years old',
-          official: true,
-          owner: 'Tax & Finance',
-          confidence: 58,
-        },
-        {
-          id: 'src-f',
-          name: 'Payroll wiki: Mobility',
-          kind: 'wiki',
-          location: 'Wiki / Payroll / Mobility',
-          status: 'No cited source',
-          tone: 'danger',
-          value: '50',
-          unit: '%',
-          excerpt: 'Current deduction for hybrids is 50% unless the vehicle is fully electric.',
-          highlight: '50%',
-          updated: 'Dec 2025',
-          age: '10 months old',
-          official: false,
-          owner: 'Wiki contributor',
-          confidence: 41,
-        },
-      ],
-    },
-  ] as Conflict[],
-  gaps: [
-    { id: 'g-1', query: 'Expat tax status change 2026', count: 42, change: 38, trend: 'up', weekly: [14, 18, 22, 26, 31, 36, 42] },
-    { id: 'g-2', query: 'Remote work policy cross-border', count: 18, change: 20, trend: 'up', weekly: [10, 11, 12, 13, 15, 16, 18] },
-    { id: 'g-3', query: 'Mobility budget electric vehicle', count: 12, change: 0, trend: 'flat', weekly: [12, 11, 13, 12, 12, 13, 12] },
-  ] as Gap[],
-}
+// Données locales affichées tant que Firestore n'a pas répondu (ou s'il est vide / inaccessible)
+const FALLBACK = fallbackData as DashboardData
 
 /* -------------------------------------------------------------------------- */
 /*  Design tokens                                                             */
@@ -492,7 +328,7 @@ function Delta({ value, goodWhenDown = false, suffix = '' }: { value: number; go
 /* -------------------------------------------------------------------------- */
 
 export default function TrustRadarDashboard() {
-  const [data] = useState(MOCK_BACKEND)
+  const [data, setData] = useState<DashboardData>(FALLBACK)
   const [activeId, setActiveId] = useState(data.conflicts[0].id)
   const [escalation, setEscalation] = useState<Record<string, 'sending' | 'sent'>>({})
   const [drafts, setDrafts] = useState<Record<string, 'drafting' | 'drafted'>>({})
@@ -501,6 +337,18 @@ export default function TrustRadarDashboard() {
   const escState = escalation[conflict.id]
   const maxCount = Math.max(...data.gaps.map((g) => g.count))
   const h = data.health
+
+  useEffect(() => {
+    let cancelled = false
+    fetchDashboard()
+      .then((remote) => {
+        if (!cancelled && remote) setData(remote)
+      })
+      .catch((err) => console.warn('Dashboard: could not read Firestore, showing local data', err))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleEscalate = () => {
     const id = conflict.id
@@ -514,55 +362,32 @@ export default function TrustRadarDashboard() {
   }
 
   return (
-    <div
-      className="tr-root min-h-screen pb-16 text-slate-900 selection:bg-[#D3077F]/20 selection:text-[#2B0B45]"
-      style={{
-        backgroundColor: '#F6F4F9',
-        backgroundImage: 'radial-gradient(60% 40% at 85% -5%, rgba(211,7,127,0.10), transparent 70%)',
-      }}
-    >
+    <div className="tr-root text-slate-900">
       <style>{STYLES}</style>
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-[#2B0B45] text-white shadow-[0_8px_20px_-8px_rgba(43,11,69,0.8)]">
-              <Radar className="size-5 text-[#FF5CB8]" />
-            </div>
-            <div>
-              <h1 className="tr-display text-xl font-extrabold leading-none text-[#2B0B45]">Trust Radar</h1>
-              <p className="mt-1 text-xs text-slate-500">Knowledge Copilot for SD Worx</p>
-            </div>
+      {/* Titre de page : l'en-tête global du site (Header) remplace l'ancien en-tête collant */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid size-10 place-items-center rounded-xl bg-[#2B0B45] text-white shadow-[0_8px_20px_-8px_rgba(43,11,69,0.8)]">
+            <Radar className="size-5 text-[#FF5CB8]" />
           </div>
-
-          <div className="flex items-center gap-4 sm:gap-6">
-            <div className="hidden items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 py-1.5 pl-3 pr-4 sm:flex">
-              <span className="relative flex size-2.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-70 motion-reduce:animate-none" />
-                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
-              </span>
-              <span className="text-xs font-semibold text-slate-700">All sources syncing</span>
-              <span className="text-xs text-slate-400">Last scan {data.lastScan}</span>
-            </div>
-            <div className="flex items-center gap-3 border-l border-slate-200 pl-4 sm:pl-6">
-              <div className="hidden text-right sm:block">
-                <p className="text-sm font-semibold leading-none text-slate-900">Admin User</p>
-                <p className="mt-1 text-xs text-slate-500">Payroll policy manager</p>
-              </div>
-              <div
-                className="grid size-9 place-items-center rounded-full text-xs font-bold text-white ring-2 ring-white"
-                style={{ background: 'linear-gradient(135deg,#D3077F,#6D28D9)' }}
-                aria-label="Admin User"
-              >
-                AU
-              </div>
-            </div>
+          <div>
+            <h1 className="tr-display m-0 text-3xl font-extrabold leading-none text-[#2B0B45]">Trust Radar</h1>
+            <p className="m-0 mt-1 text-xs text-slate-500">Knowledge Copilot for SD Worx</p>
           </div>
         </div>
-      </header>
 
-      <main className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 py-1.5 pl-3 pr-4">
+          <span className="relative flex size-2.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-70 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+          </span>
+          <span className="text-xs font-semibold text-slate-700">All sources syncing</span>
+          <span className="text-xs text-slate-400">Last scan {data.lastScan}</span>
+        </div>
+      </div>
+
+      <div>
         {/* Knowledge health */}
         <section aria-labelledby="health-title">
           <div className="mb-5">
@@ -907,7 +732,7 @@ export default function TrustRadarDashboard() {
             </div>
           </section>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -2,6 +2,8 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import ScoreLedger from '@/components/documents/ScoreLedger'
 import TrustChart from '@/components/documents/TrustChart'
+import ExpertRecommendations from '@/components/expertise/ExpertRecommendations'
+import GradeBadge from '@/components/expertise/GradeBadge'
 import { useAuth } from '@/context/AuthContext'
 import {
   downloadDocument,
@@ -12,8 +14,11 @@ import {
   recordDocumentView,
   validateDocument,
 } from '@/services/documents'
-import type { KnowledgeDocument, ScoreEvent } from '@/types'
+import { getExpertise } from '@/services/expertise'
+import { OPEN_STATUSES, getReviewRequest } from '@/services/reviews'
+import type { DomainScore, KnowledgeDocument, ReviewRequest, ScoreEvent } from '@/types'
 import { clearanceLabel, readerLevel } from '@/utils/clearance'
+import { GRADES, LOW_SCORE_THRESHOLD, domainInfo, domainPoints, gradeFor, pointsToNextGrade } from '@/utils/expertise'
 import {
   MAX_VALIDATION_GAIN,
   clearanceNeededFor,
@@ -34,15 +39,25 @@ export default function DocumentPage() {
   const [doc, setDoc] = useState<KnowledgeDocument | null>(null)
   const [history, setHistory] = useState<ScoreEvent[]>([])
   const [validated, setValidated] = useState(false)
+  const [myDomain, setMyDomain] = useState<DomainScore | null>(null)
+  const [review, setReview] = useState<ReviewRequest | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>('loading')
   const [busy, setBusy] = useState<'download' | 'validate' | null>(null)
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
 
   const load = async () => {
-    const [d, h, v] = await Promise.all([getDocument(id), getScoreHistory(id), hasValidated(id)])
+    const [d, h, v, x, r] = await Promise.all([
+      getDocument(id),
+      getScoreHistory(id),
+      hasValidated(id),
+      user ? getExpertise(user.id).catch(() => null) : null,
+      user ? getReviewRequest(id, user.id) : null,
+    ])
+    setReview(r)
     setDoc(d)
     setHistory(h)
     setValidated(v)
+    setMyDomain(d ? (x?.domains[d.domain] ?? null) : null)
     setStatus(d ? 'ready' : 'missing')
   }
 
@@ -57,20 +72,20 @@ export default function DocumentPage() {
     }
   }, [user, id])
 
-  if (authLoading) return <p className="muted">Chargement…</p>
+  if (authLoading) return <p className="muted">Loading…</p>
   if (!user)
     return (
       <p className="empty">
-        <Link to="/login">Connectez-vous</Link> pour consulter ce document.
+        <Link to="/login">Sign in</Link> to view this document.
       </p>
     )
-  if (status === 'loading') return <p className="muted">Chargement…</p>
+  if (status === 'loading') return <p className="muted">Loading…</p>
   if (status === 'missing' || !doc)
     return (
       <section>
-        <h1>Document introuvable</h1>
+        <h1>Document not found</h1>
         <p className="empty">
-          Ce document n'existe pas ou dépasse votre niveau d'accréditation. <Link to="/search">Retour aux documents</Link>
+          This document doesn’t exist or is above your clearance level. <Link to="/search">Back to documents</Link>
         </p>
       </section>
     )
@@ -79,6 +94,12 @@ export default function DocumentPage() {
   const gain = validationGain(level, doc.score)
   const isAuthor = doc.authorId === user.id
   const s = doc.signals
+  const domain = domainInfo(doc.domain)
+  const myPoints = myDomain?.points ?? 0
+  const myValidations = myDomain?.validations ?? 0
+  const pointsGain = domainPoints(level)
+  const nextGrade = pointsToNextGrade(myPoints)
+  const needsExperts = doc.score < LOW_SCORE_THRESHOLD || doc.reviewRequested
 
   const handleDownload = async () => {
     setBusy('download')
@@ -98,9 +119,13 @@ export default function DocumentPage() {
     try {
       const res = await validateDocument(doc.id)
       await load()
+      const promoted = res.grade !== res.previousGrade ? ` You’re now graded ${res.grade} in ${domain.label}!` : ''
       setMessage({
         kind: 'success',
-        text: `Document validé : ${formatDelta(res.delta)} point${Math.abs(res.delta) > 1 ? 's' : ''}, confiance ${res.score}/100.`,
+        text:
+          `Document validated: ${formatDelta(res.delta)} point${Math.abs(res.delta) === 1 ? '' : 's'}, trust ${res.score}/100. ` +
+          `${domain.label} expertise: ${formatDelta(res.domainPoints)} pts.${promoted}` +
+          (res.reviewClosed ? ' The review request is closed.' : ''),
       })
     } catch (err) {
       setMessage({ kind: 'error', text: (err as Error).message })
@@ -110,23 +135,27 @@ export default function DocumentPage() {
   }
 
   const stats = [
-    { label: 'Consultations', value: s.views },
+    { label: 'Views', value: s.views },
     { label: 'Validations', value: s.expertValidations },
-    { label: 'Utilisations réussies', value: s.successfulUses },
-    { label: 'Sources concordantes', value: s.confirmations },
+    { label: 'Successful uses', value: s.successfulUses },
+    { label: 'Confirming sources', value: s.confirmations },
     { label: 'Contradictions', value: s.contradictions },
-    { label: 'Volatilité', value: doc.volatility, unit: '/100' },
+    { label: 'Volatility', value: doc.volatility, unit: '/100' },
   ]
 
   return (
     <article className="docpage">
       <Link to={`/search${backSearch}`} className="docpage__back">
-        ← Retour aux documents
+        ← Back to documents
       </Link>
 
       <header className="docpage__head">
         <p className="mono muted">
           {docCode(doc.id)} · {doc.category} · version {doc.version}
+        </p>
+        <p className="domain-chip">
+          <span>{domain.label}</span>
+          <span className="muted">Reviewed by: {domain.expert.toLowerCase()}</span>
         </p>
         <h1>{doc.title}</h1>
         <p className="lead">{doc.description}</p>
@@ -139,16 +168,16 @@ export default function DocumentPage() {
         )}
         {(doc.reviewRequested || doc.conflictsWith.length > 0) && (
           <p className="notice">
-            {doc.reviewRequested && 'Une révision par un expert a été demandée. '}
+            {doc.reviewRequested && 'Expert review requested. '}
             {doc.conflictsWith.length > 0 &&
-              `En conflit avec ${doc.conflictsWith.length} autre${doc.conflictsWith.length > 1 ? 's' : ''} document${doc.conflictsWith.length > 1 ? 's' : ''}.`}
+              `Conflicting with ${doc.conflictsWith.length} other document${doc.conflictsWith.length === 1 ? '' : 's'}.`}
           </p>
         )}
       </header>
 
       <section className="card trust" aria-labelledby="trust-title">
         <div className="trust__score">
-          <h2 id="trust-title">Score de confiance</h2>
+          <h2 id="trust-title">Trust score</h2>
           <p>
             <span className="trust__value">{doc.score}</span>
             <span className="muted">/100</span>
@@ -162,8 +191,8 @@ export default function DocumentPage() {
             <span className="meter__fill" />
           </div>
           <p className="muted">
-            Visible à partir du niveau {clearanceNeededFor(doc.score)} · dernière variation le{' '}
-            {new Date(doc.lastScoredAt).toLocaleDateString('fr-FR')}
+            Visible from level {clearanceNeededFor(doc.score)} · last changed{' '}
+            {new Date(doc.lastScoredAt).toLocaleDateString('en-GB')}
           </p>
         </div>
         <ul className="stats docpage__stats">
@@ -179,30 +208,40 @@ export default function DocumentPage() {
         </ul>
       </section>
 
+      {review && OPEN_STATUSES.includes(review.status) && (
+        <p className="notice review-banner">
+          <strong>{review.requesterName}</strong> asked you to review this document
+          {review.message && <> : “{review.message}”</>}. Check it, then validate it below to close the request.{' '}
+          <Link to="/requests">See all requests</Link>
+        </p>
+      )}
+
+      {needsExperts && <ExpertRecommendations documentId={doc.id} domain={doc.domain} score={doc.score} />}
+
       <section className="card" aria-labelledby="chart-title">
-        <h2 id="chart-title">Cotation de la confiance</h2>
+        <h2 id="chart-title">Trust chart</h2>
         <TrustChart events={history} readerFloor={user.role === 'admin' ? 0 : minScoreFor(user.clearance)} />
       </section>
 
       <section className="card" aria-labelledby="ledger-title">
-        <h2 id="ledger-title">Journal des mouvements</h2>
+        <h2 id="ledger-title">Score history</h2>
         <ScoreLedger events={history} fileName={doc.fileName} />
       </section>
 
       <div className="dashboard__grid">
         <section className="card">
-          <h2>Fichier</h2>
+          <h2>File</h2>
           <dl className="meta">
-            <dt>Nom</dt>
+            <dt>Name</dt>
             <dd>{doc.fileName}</dd>
-            <dt>Taille</dt>
+            <dt>Size</dt>
             <dd>{formatBytes(doc.sizeBytes)}</dd>
             <dt>Type</dt>
             <dd className="mono">{doc.mimeType}</dd>
-            <dt>Créé le</dt>
-            <dd>{new Date(doc.createdAt).toLocaleDateString('fr-FR')}</dd>
-            <dt>Mis à jour</dt>
-            <dd>{new Date(doc.updatedAt).toLocaleDateString('fr-FR')}</dd>
+            <dt>Created</dt>
+            <dd>{new Date(doc.createdAt).toLocaleDateString('en-GB')}</dd>
+            <dt>Updated</dt>
+            <dd>{new Date(doc.updatedAt).toLocaleDateString('en-GB')}</dd>
             <dt>SHA-256</dt>
             <dd className="mono" title={doc.sha256}>
               {doc.sha256.slice(0, 16)}…
@@ -212,10 +251,10 @@ export default function DocumentPage() {
       </div>
 
       <section className="card docpage__actions" aria-labelledby="actions-title">
-        <h2 id="actions-title">Utiliser ce document</h2>
+        <h2 id="actions-title">Use this document</h2>
         <div className="actions">
           <button type="button" className="btn btn--secondary" onClick={handleDownload} disabled={busy !== null}>
-            {busy === 'download' ? 'Téléchargement…' : 'Télécharger'}
+            {busy === 'download' ? 'Downloading…' : 'Download'}
           </button>
           <button
             type="button"
@@ -223,29 +262,45 @@ export default function DocumentPage() {
             onClick={handleValidate}
             disabled={busy !== null || validated || isAuthor}
           >
-            {validated ? 'Document validé ✓' : busy === 'validate' ? 'Validation…' : 'Valider le document'}
+            {validated ? 'Document validated ✓' : busy === 'validate' ? 'Validating…' : 'Validate document'}
           </button>
         </div>
         <p className="muted">
           {isAuthor
-            ? 'Vous êtes l’auteur de ce document : vous ne pouvez pas le valider.'
+            ? 'You wrote this document, so you can’t validate it.'
             : validated
-              ? 'Vous avez déjà validé ce document.'
-              : `Avec votre niveau ${level} (${user.role === 'admin' ? 'Admin' : clearanceLabel(level)}), votre validation ajoutera ${formatDelta(gain)} point${gain > 1 ? 's' : ''} de confiance.`}
+              ? 'You’ve already validated this document.'
+              : `At your level ${level} (${user.role === 'admin' ? 'Admin' : clearanceLabel(level)}), your validation adds ${formatDelta(gain)} trust point${gain === 1 ? '' : 's'} and ${formatDelta(pointsGain)} pts to your ${domain.label} expertise.`}
+        </p>
+        <p className="my-grade">
+          <GradeBadge grade={gradeFor(myPoints)} domain={domain.label} />
+          <span>
+            Your {domain.label} grade: {myPoints} pts, {myValidations} validation{myValidations === 1 ? '' : 's'}
+            {nextGrade && <span className="muted"> · {nextGrade.missing} pts to {nextGrade.grade}</span>}
+          </span>
         </p>
         {message && <p className={message.kind === 'error' ? 'form__error' : 'form__success'}>{message.text}</p>}
         <details className="formula">
-          <summary>Comment le gain est-il calculé ?</summary>
+          <summary>How is the gain calculated?</summary>
           <p>
             <code className="mono">
-              gain = {MAX_VALIDATION_GAIN} × (niveau ÷ 100)² × (100 − score) ÷ 100
+              gain = {MAX_VALIDATION_GAIN} × (level ÷ 100)² × (100 − score) ÷ 100
             </code>
-            , arrondi, au moins 1 point.
+            , rounded, minimum 1 point.
           </p>
           <p>
-            Le poids grandit avec le carré de l'accréditation : un Expert (100) pèse 4 fois un Senior (50) et 25 fois un
-            Confirmé (20). Plus le document est déjà fiable, plus les derniers points sont durs à gagner. Chaque personne
-            ne valide un document qu'une fois.
+            The weight grows with the square of the clearance level: an Expert (100) counts 4 times as much as a Senior
+            (50) and 25 times as much as an Intermediate (20). The more trusted a document already is, the harder the
+            last points are to earn. Each person can validate a document only once.
+          </p>
+          <p>
+            Each validation also earns <code className="mono">level ÷ 10</code> expertise points (minimum 1) in the
+            document’s domain. Grades:{' '}
+            {[...GRADES]
+              .reverse()
+              .map((g) => `${g.grade} from ${g.min} pts`)
+              .join(', ')}
+            . Documents below {LOW_SCORE_THRESHOLD}/100 recommend the best-graded profiles in their domain.
           </p>
         </details>
       </section>

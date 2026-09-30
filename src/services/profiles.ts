@@ -10,11 +10,11 @@ export const MIN_PASSWORD_LENGTH = 8
 export const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
 const authErrors: Record<string, string> = {
-  'auth/invalid-credential': 'Identifiants incorrects.',
-  'auth/invalid-email': 'Adresse mail invalide.',
-  'auth/user-disabled': 'Ce compte est désactivé.',
-  'auth/too-many-requests': 'Trop de tentatives, réessayez dans quelques minutes.',
-  'auth/network-request-failed': 'Erreur réseau, vérifiez votre connexion.',
+  'auth/invalid-credential': 'Incorrect email or password.',
+  'auth/invalid-email': 'Invalid email address.',
+  'auth/user-disabled': 'This account is disabled. Contact your administrator.',
+  'auth/too-many-requests': 'Too many attempts. Try again in a few minutes.',
+  'auth/network-request-failed': 'Network error. Check your connection and try again.',
 }
 
 // Les erreurs des Cloud Functions ont déjà un message en français ; on traduit celles de Firebase Auth
@@ -24,7 +24,7 @@ function toError(err: unknown): Error {
     if (err.code.startsWith('functions/') && err.message !== 'internal') return new Error(err.message)
   }
   console.error(err)
-  return new Error('Une erreur est survenue.')
+  return new Error('Something went wrong. Try again.')
 }
 
 function toProfile(snap: DocumentSnapshot): Profile {
@@ -55,10 +55,10 @@ export async function listProfiles(): Promise<Profile[]> {
 }
 
 export async function createProfile(input: NewProfile): Promise<Profile> {
-  if (!input.firstName.trim() || !input.lastName.trim()) throw new Error('Le nom et le prénom sont obligatoires.')
-  if (!isValidEmail(input.email.trim())) throw new Error('Adresse mail invalide.')
+  if (!input.firstName.trim() || !input.lastName.trim()) throw new Error('First name and last name are required.')
+  if (!isValidEmail(input.email.trim())) throw new Error('Invalid email address.')
   if (input.password.length < MIN_PASSWORD_LENGTH)
-    throw new Error(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`)
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
 
   try {
     const res = await httpsCallable<NewProfile, Omit<Profile, 'createdAt'>>(functions, 'createProfile')(input)
@@ -82,7 +82,7 @@ export async function login(email: string, password: string): Promise<Profile> {
     const profile = await loadProfile(user)
     if (!profile) {
       await signOut(auth)
-      throw new Error("Aucun profil associé à ce compte.")
+      throw new Error('No profile is linked to this account. Contact your administrator.')
     }
     return profile
   } catch (err) {

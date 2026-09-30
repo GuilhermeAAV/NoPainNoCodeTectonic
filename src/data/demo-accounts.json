@@ -1,0 +1,19 @@
+{
+  "password": "demo-docexchange",
+  "accounts": [
+    { "email": "camille.roux@docexchange.demo", "firstName": "Camille", "lastName": "Roux", "clearance": 95, "persona": "Cybersecurity lead", "expertise": { "cybersecurite": 17, "conformite": 4 } },
+    { "email": "yanis.benali@docexchange.demo", "firstName": "Yanis", "lastName": "Benali", "clearance": 85, "persona": "Security engineer", "expertise": { "cybersecurite": 10, "infrastructure": 6 } },
+    { "email": "lea.martin@docexchange.demo", "firstName": "Léa", "lastName": "Martin", "clearance": 75, "persona": "Developer, learning security", "expertise": { "cybersecurite": 3, "developpement": 7 } },
+    { "email": "hugo.lefevre@docexchange.demo", "firstName": "Hugo", "lastName": "Lefèvre", "clearance": 90, "persona": "Corporate lawyer", "expertise": { "droit-affaires": 17, "fiscalite": 3 } },
+    { "email": "sarah.cohen@docexchange.demo", "firstName": "Sarah", "lastName": "Cohen", "clearance": 88, "persona": "Data protection officer", "expertise": { "donnees-personnelles": 18, "conformite": 6 } },
+    { "email": "thomas.girard@docexchange.demo", "firstName": "Thomas", "lastName": "Girard", "clearance": 92, "persona": "Compliance officer", "expertise": { "conformite": 17, "finance": 5 } },
+    { "email": "nora.haddad@docexchange.demo", "firstName": "Nora", "lastName": "Haddad", "clearance": 75, "persona": "Financial controller", "expertise": { "finance": 12, "fiscalite": 6 } },
+    { "email": "paul.bernard@docexchange.demo", "firstName": "Paul", "lastName": "Bernard", "clearance": 85, "persona": "Tax specialist", "expertise": { "fiscalite": 17, "finance": 4 } },
+    { "email": "maxime.petit@docexchange.demo", "firstName": "Maxime", "lastName": "Petit", "clearance": 90, "persona": "SRE lead", "expertise": { "infrastructure": 18, "operations": 7 } },
+    { "email": "emma.laurent@docexchange.demo", "firstName": "Emma", "lastName": "Laurent", "clearance": 80, "persona": "Software architect", "expertise": { "developpement": 19, "infrastructure": 3 } },
+    { "email": "julie.moreau@docexchange.demo", "firstName": "Julie", "lastName": "Moreau", "clearance": 65, "persona": "HR business partner", "expertise": { "rh": 14, "operations": 3 } },
+    { "email": "lucas.simon@docexchange.demo", "firstName": "Lucas", "lastName": "Simon", "clearance": 60, "persona": "Operations manager", "expertise": { "operations": 16, "rh": 2 } },
+    { "email": "alex.durand@docexchange.demo", "firstName": "Alex", "lastName": "Durand", "clearance": 60, "persona": "Senior, no expertise yet: asks for reviews", "expertise": {} },
+    { "email": "jordan.blanc@docexchange.demo", "firstName": "Jordan", "lastName": "Blanc", "clearance": 30, "persona": "Intermediate: only sees trusted documents", "expertise": {} }
+  ]
+}

@@ -3,7 +3,7 @@ import type { Item, Profile } from '@/types'
 /** Paliers d'accréditation : chaque palier commence à `min` */
 export const tiers = [
   { min: 0, label: 'Junior' },
-  { min: 20, label: 'Confirmé' },
+  { min: 20, label: 'Intermediate' },
   { min: 50, label: 'Senior' },
   { min: 80, label: 'Expert' },
 ]

@@ -5,7 +5,7 @@ export default function RequireAdmin() {
   const { user, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) return <p className="muted">Chargement…</p>
+  if (loading) return <p className="muted">Loading…</p>
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (user.role !== 'admin') return <Navigate to="/" replace />
   return <Outlet />

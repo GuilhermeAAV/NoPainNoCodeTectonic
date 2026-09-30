@@ -1,10 +1,12 @@
 // Types partagés de l'application
+import type { DomainId, Grade } from '@/utils/expertise'
+
 export interface ApiError {
   message: string
   status: number
 }
 
-export type ItemStatus = 'diffusé' | 'en relecture' | 'archivé'
+export type ItemStatus = 'published' | 'in review' | 'archived'
 
 export interface Item {
   id: number
@@ -38,6 +40,9 @@ export type NewProfile = Pick<Profile, 'firstName' | 'lastName' | 'email' | 'cle
  *   documents/{docId}                    KnowledgeDocument (métadonnées + score, léger, listable)
  *   documents/{docId}/content/file       DocumentContent (fichier en base64, chargé à la demande)
  *   documents/{docId}/scoreHistory/{id}  ScoreEvent (historique append-only des variations)
+ *   documents/{docId}/validations/{uid}  une validation par utilisateur
+ *   expertise/{uid}                      Expertise (notes A-F par domaine, écrit par validateDocument)
+ *   reviewRequests/{docId}_{expertId}    ReviewRequest (demande de revue adressée à un expert)
  */
 
 /** Signaux bruts qui alimenteront le calcul du score */
@@ -59,6 +64,8 @@ export interface KnowledgeDocument {
   title: string
   description: string
   category: string
+  /** Domaine d'expertise (déduit de la catégorie pour les documents plus anciens) */
+  domain: DomainId
   tags: string[]
 
   // Fichier (le contenu lui-même est dans content/file)
@@ -130,7 +137,7 @@ export interface ScoreEvent {
   at: string
 }
 
-export type NewDocument = Pick<KnowledgeDocument, 'title' | 'description' | 'category' | 'tags'> & {
+export type NewDocument = Pick<KnowledgeDocument, 'title' | 'description' | 'category' | 'domain' | 'tags'> & {
   /** Score initial, 50 par défaut */
   score?: number
 }
@@ -157,4 +164,60 @@ export interface SearchResult {
     | 'reviewRequested'
     | 'updatedAt'
   >
+}
+
+/** Expertise d'un utilisateur dans un domaine */
+export interface DomainScore {
+  /** Somme des points gagnés en validant des documents du domaine (voir domainPoints) */
+  points: number
+  validations: number
+  grade: Grade
+  lastValidatedAt: string | null
+}
+
+/** expertise/{uid} : lisible par l'intéressé et l'admin, écrit par les Cloud Functions */
+export interface Expertise {
+  id: string
+  firstName: string
+  lastName: string
+  clearance: number
+  role: Role
+  domains: Partial<Record<DomainId, DomainScore>>
+}
+
+/** Expert proposé par la Cloud Function recommendExperts (sans adresse mail) */
+export interface RecommendedExpert {
+  id: string
+  firstName: string
+  lastName: string
+  clearance: number
+  role: Role
+  points: number
+  validations: number
+  grade: Grade
+  /** Statut de la demande de revue déjà envoyée à cet expert pour ce document */
+  requestStatus: ReviewStatus | null
+}
+
+/** pending → accepted → done (validation), ou declined (expert) / cancelled (demandeur) */
+export type ReviewStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'done'
+
+export interface ReviewRequest {
+  id: string
+  documentId: string
+  documentTitle: string
+  /** Score du document au moment de la demande */
+  documentScore: number
+  domain: DomainId
+  expertId: string
+  expertName: string
+  expertGrade: Grade
+  requesterId: string
+  requesterName: string
+  message: string
+  status: ReviewStatus
+  /** Points de confiance apportés par la validation qui a clos la demande */
+  validationDelta?: number
+  createdAt: string
+  updatedAt: string
 }

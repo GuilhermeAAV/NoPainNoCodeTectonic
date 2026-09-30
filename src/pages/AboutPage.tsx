@@ -1,16 +1,16 @@
 export default function AboutPage() {
   return (
     <section className="prose">
-      <h1>À propos</h1>
+      <h1>About</h1>
       <p>
-        DocExchange centralise les documents internes d'une organisation et les partage selon le niveau
-        d'accréditation de chaque personne, de 0 à 100.
+        DocExchange brings an organisation’s internal documents together and gives each one a trust score from 0 to
+        100. Validations from experts raise it. Conflicts with other sources and outdated content lower it.
       </p>
       <p>
-        Chaque document porte un niveau requis. Si votre niveau est suffisant, vous l'ouvrez. Sinon, il reste sous
-        pli : vous voyez qu'il existe et à quel service il appartient, jamais son contenu.
+        Every document also has a required clearance level. If your level is high enough, you can open it. If not, it
+        stays hidden from you.
       </p>
-      <p className="muted">Projet réalisé dans le cadre du hackathon NoPainNoCode.</p>
+      <p className="muted">Built for the NoPainNoCode hackathon.</p>
     </section>
   )
 }

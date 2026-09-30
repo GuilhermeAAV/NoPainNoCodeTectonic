@@ -70,13 +70,13 @@ export default function SearchPage() {
     updateParam('q', draft.trim())
   }
 
-  if (authLoading) return <p className="muted">Chargement…</p>
+  if (authLoading) return <p className="muted">Loading…</p>
   if (!user)
     return (
       <section>
         <h1>Documents</h1>
         <p className="empty">
-          <Link to="/login">Connectez-vous</Link> pour rechercher parmi les documents de votre niveau.
+          <Link to="/login">Sign in</Link> to search the documents available at your clearance level.
         </p>
       </section>
     )
@@ -93,23 +93,23 @@ export default function SearchPage() {
         <input
           type="search"
           className="input"
-          placeholder="Décrivez ce que vous cherchez, ex. « comment déployer en production »"
-          aria-label="Rechercher un document"
+          placeholder="Describe what you need, e.g. “how to deploy to production”"
+          aria-label="Search documents"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={500}
           autoFocus
         />
         <button type="submit" className="btn btn--primary" disabled={loading}>
-          Rechercher
+          Search
         </button>
         <select
           className="input"
-          aria-label="Filtrer par service"
+          aria-label="Filter by department"
           value={category}
           onChange={(e) => updateParam('category', e.target.value)}
         >
-          <option value="">Tous les services</option>
+          <option value="">All departments</option>
           {categories.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -121,17 +121,17 @@ export default function SearchPage() {
       <p className="muted">
         {loading
           ? query
-            ? 'Recherche des documents les plus pertinents…'
-            : 'Chargement…'
+            ? 'Finding the most relevant documents…'
+            : 'Loading…'
           : `${results.length} document${results.length > 1 ? 's' : ''} ${
-              query ? 'pertinents, du plus au moins pertinent' : 'accessibles, par confiance décroissante'
+              query ? 'found, most relevant first' : 'available, highest trust first'
             }`}
-        {' · '}votre niveau : {level}, confiance ≥ {floor}
+        {' · '}your level: {level}, trust ≥ {floor}
         {query && !loading && (
           <>
             {' · '}
             <button type="button" className="link-button" onClick={() => updateParam('q', '')}>
-              Effacer la recherche
+              Clear search
             </button>
           </>
         )}
@@ -139,7 +139,7 @@ export default function SearchPage() {
 
       {error && <p className="form__error">{error}</p>}
       {!loading && !error && results.length === 0 && (
-        <p className="empty">Aucun document ne correspond. Essayez de formuler votre besoin autrement.</p>
+        <p className="empty">No documents match. Try describing what you need in other words.</p>
       )}
 
       <ol className="results" aria-busy={loading}>
@@ -149,28 +149,28 @@ export default function SearchPage() {
               <div className="doc__head mono">
                 <span>{docCode(id)}</span>
                 <span>
-                  Confiance {d.score}
+                  Trust {d.score}
                   {d.delta !== 0 && ` (${formatDelta(d.delta)})`}
                 </span>
               </div>
               <strong className="doc__title">{d.title}</strong>
               {relevance !== undefined && (
-                <div className="relevance" aria-label={`Pertinence ${relevance} sur 100`}>
+                <div className="relevance" aria-label={`Relevance ${relevance} out of 100`}>
                   <span className="relevance__track">
                     <span className="relevance__fill" style={{ width: `${relevance}%` }} />
                   </span>
-                  <span className="mono">Pertinence {relevance}</span>
+                  <span className="mono">Relevance {relevance}</span>
                 </div>
               )}
               <p>{reason ?? d.description}</p>
               <div className="doc__foot">
                 <span className="muted">
-                  {d.category} · {new Date(d.updatedAt).toLocaleDateString('fr-FR')}
+                  {d.category} · {new Date(d.updatedAt).toLocaleDateString('en-GB')}
                 </span>
                 {d.reviewRequested ? (
-                  <span className="badge badge--en-relecture">révision demandée</span>
+                  <span className="badge badge--in-review">review requested</span>
                 ) : d.conflictsWith?.length ? (
-                  <span className="badge badge--en-relecture">en conflit</span>
+                  <span className="badge badge--in-review">conflicting</span>
                 ) : null}
               </div>
             </Link>

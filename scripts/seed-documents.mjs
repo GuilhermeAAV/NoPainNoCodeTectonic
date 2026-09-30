@@ -8,7 +8,7 @@ import { Timestamp, collection, doc, getFirestore, serverTimestamp, writeBatch }
 
 const [email, password] = process.argv.slice(2)
 if (!email || !password) {
-  console.error('Usage : npm run seed -- <email admin> <mot de passe>')
+  console.error('Usage: npm run seed -- <admin email> <password>')
   process.exit(1)
 }
 
@@ -20,19 +20,31 @@ await signInWithEmailAndPassword(auth, email, password)
 
 // [clé, titre, description, catégorie, tags, score, delta, volatilité, signaux, conflits (clés), révision demandée]
 const seed = [
-  ['deploy', 'Procédure de déploiement en production', 'Étapes pour déployer une nouvelle version : gel du code, tests, déploiement progressif, rollback.', 'DevOps', ['déploiement', 'production', 'ci/cd', 'rollback'], 92, 3, 8, [6, 41, 320, 5, 0], [], false],
-  ['deployOld', 'Guide de mise en production (2021)', 'Ancienne procédure de mise en production manuelle via FTP et scripts shell.', 'DevOps', ['déploiement', 'production', 'legacy'], 34, -12, 61, [0, 3, 890, 0, 4], ['deploy'], true],
-  ['incident', 'Gestion des incidents critiques', 'Qui prévenir, niveaux de sévérité, communication client et post-mortem.', 'Support', ['incident', 'astreinte', 'post-mortem', 'sévérité'], 88, 6, 12, [4, 27, 410, 3, 0], [], false],
-  ['onboarding', 'Onboarding développeur', 'Accès, installation du poste, conventions de code et premiers tickets.', 'RH', ['onboarding', 'nouvel arrivant', 'poste de travail'], 95, 1, 4, [8, 62, 530, 6, 0], [], false],
-  ['api', 'Conventions de conception d’API REST', 'Nommage des ressources, versioning, pagination, codes d’erreur.', 'Backend', ['api', 'rest', 'versioning', 'pagination'], 81, 4, 15, [3, 19, 205, 4, 1], [], false],
-  ['graphql', 'Migration vers GraphQL : note de cadrage', 'Proposition de remplacer l’API REST par GraphQL, encore en discussion.', 'Backend', ['api', 'graphql', 'architecture'], 52, 9, 48, [1, 2, 140, 1, 2], ['api'], false],
-  ['rgpd', 'Traitement des données personnelles (RGPD)', 'Durées de conservation, droit à l’oubli, registre des traitements.', 'Juridique', ['rgpd', 'données personnelles', 'conformité'], 90, 0, 6, [5, 14, 260, 4, 0], [], false],
-  ['password', 'Politique de mots de passe', 'Longueur minimale, gestionnaire de mots de passe, double authentification.', 'Sécurité', ['sécurité', 'mot de passe', '2fa'], 86, -2, 10, [4, 22, 310, 3, 0], [], false],
-  ['passwordOld', 'Rotation des mots de passe tous les 30 jours', 'Ancienne règle imposant un changement mensuel, contredite par les recommandations actuelles.', 'Sécurité', ['sécurité', 'mot de passe'], 28, -18, 70, [0, 1, 640, 0, 5], ['password'], true],
-  ['db', 'Sauvegarde et restauration de la base de données', 'Fréquence des sauvegardes, tests de restauration, rétention.', 'DevOps', ['base de données', 'sauvegarde', 'restauration', 'postgresql'], 77, -4, 22, [2, 9, 150, 2, 1], [], false],
-  ['expenses', 'Notes de frais', 'Plafonds, justificatifs acceptés et délais de remboursement.', 'Finance', ['notes de frais', 'remboursement', 'déplacement'], 83, 2, 9, [3, 48, 720, 2, 0], [], false],
-  ['k8s', 'Retour d’expérience : autoscaling Kubernetes', 'Tests internes non validés sur le réglage de l’autoscaling des pods.', 'DevOps', ['kubernetes', 'autoscaling', 'performance'], 45, 14, 58, [1, 4, 95, 1, 1], [], false],
+  ['deploy', 'Production deployment procedure', 'Steps to ship a new release: code freeze, tests, progressive rollout, rollback.', 'DevOps', ['deployment', 'production', 'ci/cd', 'rollback'], 92, 3, 8, [6, 41, 320, 5, 0], [], false],
+  ['deployOld', 'Release to production guide (2021)', 'Former manual release procedure using FTP and shell scripts.', 'DevOps', ['deployment', 'production', 'legacy'], 34, -12, 61, [0, 3, 890, 0, 4], ['deploy'], true],
+  ['incident', 'Critical incident management', 'Who to notify, severity levels, customer communication and post-mortem.', 'Support', ['incident', 'on-call', 'post-mortem', 'severity'], 88, 6, 12, [4, 27, 410, 3, 0], [], false],
+  ['onboarding', 'Developer onboarding', 'Access, workstation setup, coding conventions and first tickets.', 'HR', ['onboarding', 'new hire', 'workstation'], 95, 1, 4, [8, 62, 530, 6, 0], [], false],
+  ['api', 'REST API design conventions', 'Resource naming, versioning, pagination, error codes.', 'Backend', ['api', 'rest', 'versioning', 'pagination'], 81, 4, 15, [3, 19, 205, 4, 1], [], false],
+  ['graphql', 'GraphQL migration: scoping note', 'Proposal to replace the REST API with GraphQL, still under discussion.', 'Backend', ['api', 'graphql', 'architecture'], 52, 9, 48, [1, 2, 140, 1, 2], ['api'], false],
+  ['rgpd', 'Personal data processing (GDPR)', 'Retention periods, right to be forgotten, record of processing activities.', 'Legal', ['gdpr', 'personal data', 'compliance'], 90, 0, 6, [5, 14, 260, 4, 0], [], false],
+  ['password', 'Password policy', 'Minimum length, password manager, two-factor authentication.', 'Security', ['security', 'password', '2fa'], 86, -2, 10, [4, 22, 310, 3, 0], [], false],
+  ['passwordOld', 'Password rotation every 30 days', 'Former rule requiring a monthly change, contradicted by current guidance.', 'Security', ['security', 'password'], 28, -18, 70, [0, 1, 640, 0, 5], ['password'], true],
+  ['db', 'Database backup and restore', 'Backup frequency, restore tests, retention.', 'DevOps', ['database', 'backup', 'restore', 'postgresql'], 77, -4, 22, [2, 9, 150, 2, 1], [], false],
+  ['expenses', 'Expense reports', 'Spending limits, accepted receipts and reimbursement timelines.', 'Finance', ['expense reports', 'reimbursement', 'travel'], 83, 2, 9, [3, 48, 720, 2, 0], [], false],
+  ['k8s', 'Lessons learned: Kubernetes autoscaling', 'Unvalidated internal tests on tuning pod autoscaling.', 'DevOps', ['kubernetes', 'autoscaling', 'performance'], 45, 14, 58, [1, 4, 95, 1, 1], [], false],
+  ['phishing', 'Phishing incident response playbook', 'Draft playbook: isolating mailboxes, resetting credentials, notifying the CERT.', 'Security', ['phishing', 'incident', 'email', 'cert'], 38, -6, 52, [0, 2, 210, 0, 2], [], true],
+  ['contracts', 'Supplier contract standard clauses', 'Liability caps, termination, intellectual property and governing law.', 'Legal', ['contract', 'supplier', 'liability', 'intellectual property'], 55, 5, 30, [1, 6, 180, 1, 1], [], false],
+  ['vat', 'VAT on cross-border services', 'Reverse charge, place of supply and invoicing mentions for EU clients.', 'Finance', ['vat', 'tax', 'invoicing', 'eu'], 61, -3, 26, [1, 8, 240, 1, 1], [], false],
+  ['aml', 'Anti-money laundering checks (KYC)', 'Customer due diligence, risk scoring and escalation to compliance.', 'Legal', ['aml', 'kyc', 'compliance', 'risk'], 47, 8, 41, [1, 3, 130, 1, 2], [], true],
 ]
+
+// Domaine d'expertise de chaque document (voir src/utils/expertise.ts)
+const DOMAINS = {
+  deploy: 'infrastructure', deployOld: 'infrastructure', db: 'infrastructure', k8s: 'infrastructure',
+  incident: 'operations', onboarding: 'rh', api: 'developpement', graphql: 'developpement',
+  rgpd: 'donnees-personnelles', password: 'cybersecurite', passwordOld: 'cybersecurite', phishing: 'cybersecurite',
+  expenses: 'finance', contracts: 'droit-affaires', vat: 'fiscalite', aml: 'conformite',
+}
 
 // PRNG déterministe : relancer le script produit les mêmes historiques
 let seedState = 42
@@ -44,17 +56,17 @@ const rand = () => {
 }
 const between = (min, max) => min + Math.floor(rand() * (max - min + 1))
 const clampScore = (n) => Math.max(0, Math.min(100, n))
-const tierLabel = (c) => (c >= 80 ? 'Expert' : c >= 50 ? 'Senior' : c >= 20 ? 'Confirmé' : 'Junior')
+const tierLabel = (c) => (c >= 80 ? 'Expert' : c >= 50 ? 'Senior' : c >= 20 ? 'Intermediate' : 'Junior')
 const volatilityFrom = (deltas) =>
   deltas.length ? Math.min(100, Math.round((5 * deltas.reduce((sum, d) => sum + Math.abs(d), 0)) / deltas.length)) : 0
 
 // Mouvements types : [source, variation min, max, raison, poids selon les signaux du document]
 const MOVES = [
   ['expert', 3, 12, null, (s) => s.ev + 1],
-  ['usage', 1, 3, 'Utilisation réussie signalée', (s) => s.su / 4 + 1],
-  ['consistency', 2, 6, 'Confirmé par une source concordante', (s) => s.conf + 1],
-  ['contradiction', -15, -5, 'Contradiction détectée avec une autre source', (s) => s.contra * 3],
-  ['freshness', -4, -1, 'Aucune mise à jour depuis 90 jours', () => 2],
+  ['usage', 1, 3, 'Successful use reported', (s) => s.su / 4 + 1],
+  ['consistency', 2, 6, 'Confirmed by a matching source', (s) => s.conf + 1],
+  ['contradiction', -15, -5, 'Contradiction found with another source', (s) => s.contra * 3],
+  ['freshness', -4, -1, 'No update in 90 days', () => 2],
 ]
 
 /**
@@ -71,7 +83,7 @@ function makeHistory(score, lastDelta, signals, days = 120) {
       source = lastDelta > 0 ? 'expert' : lastDelta < 0 ? 'contradiction' : 'consistency'
       delta = lastDelta
       reason = MOVES.find((m) => m[0] === source)[3]
-      if (delta === 0) reason = 'Réévaluation : score confirmé'
+      if (delta === 0) reason = 'Reassessed: trust score confirmed'
     } else {
       const weights = MOVES.map((m) => m[4](signals))
       let r = rand() * weights.reduce((a, b) => a + b, 0)
@@ -92,13 +104,13 @@ function makeHistory(score, lastDelta, signals, days = 120) {
     }
     if (source === 'expert') {
       actorClearance = between(50, 100)
-      reason = `Validé par un profil ${tierLabel(actorClearance)} (niveau ${actorClearance})`
+      reason = `Validated by a ${tierLabel(actorClearance)} profile (clearance level ${actorClearance})`
     }
-    reason ??= delta >= 0 ? 'Réévaluation manuelle à la hausse' : 'Réévaluation manuelle à la baisse'
+    reason ??= delta >= 0 ? 'Manual reassessment upward' : 'Manual reassessment downward'
     moves.push({ source, delta, previousScore, score: s, reason, actorClearance })
     s = previousScore
   }
-  moves.push({ source: 'initial', delta: 0, previousScore: s, score: s, reason: 'Création du document', actorClearance: 100 })
+  moves.push({ source: 'initial', delta: 0, previousScore: s, score: s, reason: 'Document created', actorClearance: 100 })
   moves.reverse()
 
   const now = Date.now()
@@ -137,7 +149,7 @@ for (const [key, title, description, category, tags, score, delta, , [ev, su, vi
   const createdAt = Timestamp.fromMillis(history[0].at)
 
   await write(ref, {
-    title, description, category, tags,
+    title, description, category, domain: DOMAINS[key], tags,
     fileName: `${key}.md`, mimeType: 'text/markdown', sizeBytes: bytes.length, sha256,
     authorId: auth.currentUser.uid, createdAt, updatedAt: serverTimestamp(), version: 1,
     score, previousScore: score - delta, delta, volatility: history.at(-1).volatility,
@@ -173,5 +185,5 @@ for (const [key, title, description, category, tags, score, delta, , [ev, su, vi
 }
 
 if (pending) await batch.commit()
-console.log(`${seed.length} documents et ${eventCount} mouvements de score insérés.`)
+console.log(`Inserted ${seed.length} documents and ${eventCount} trust score events.`)
 process.exit(0)

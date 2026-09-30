@@ -21,11 +21,13 @@ import type {
   NewDocument,
   Profile,
   Role,
+  RecommendedExpert,
   ScoreEvent,
   ScoreSource,
   SearchResult,
   TrustSignals,
 } from '@/types'
+import { domainOf, type DomainId, type Grade } from '@/utils/expertise'
 import { VOLATILITY_WINDOW, clearanceNeededFor, deltaPctOf, volatilityFrom } from '@/utils/trust'
 
 // Un document Firestore fait au plus 1 Mio et le base64 ajoute ~33 % : on plafonne le fichier à 700 Ko
@@ -36,12 +38,12 @@ const contentRef = (id: string) => doc(db, 'documents', id, 'content', 'file')
 const historyCol = (id: string) => collection(db, 'documents', id, 'scoreHistory')
 const validationRef = (id: string, uid: string) => doc(db, 'documents', id, 'validations', uid)
 
-// Les Cloud Functions renvoient déjà un message en français
+// Les Cloud Functions renvoient déjà un message lisible
 function toError(err: unknown): Error {
   if (err instanceof FirebaseError && err.code.startsWith('functions/') && err.message !== 'internal')
     return new Error(err.message)
   console.error(err)
-  return new Error('Une erreur est survenue.')
+  return new Error('Something went wrong. Try again.')
 }
 
 async function call<Req, Res>(name: string, data: Req): Promise<Res> {
@@ -74,6 +76,7 @@ function toDocument(snap: DocumentSnapshot): KnowledgeDocument {
   return {
     ...(d as Omit<KnowledgeDocument, 'id' | 'createdAt' | 'updatedAt' | 'lastScoredAt'>),
     id: snap.id,
+    domain: domainOf(d),
     createdAt: toIso(d.createdAt),
     updatedAt: toIso(d.updatedAt),
     lastScoredAt: toIso(d.lastScoredAt),
@@ -82,9 +85,9 @@ function toDocument(snap: DocumentSnapshot): KnowledgeDocument {
 
 /** Crée métadonnées + contenu + premier événement d'historique en une seule écriture atomique */
 export async function createDocument(file: File, input: NewDocument): Promise<string> {
-  if (file.size > MAX_FILE_BYTES) throw new Error(`Le fichier dépasse ${Math.round(MAX_FILE_BYTES / 1024)} Ko.`)
+  if (file.size > MAX_FILE_BYTES) throw new Error(`The file is larger than ${Math.round(MAX_FILE_BYTES / 1024)} KB. Choose a smaller file.`)
   const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Connexion requise.')
+  if (!uid) throw new Error('Sign in to continue.')
 
   const [{ base64, sha256 }, actor] = await Promise.all([readFile(file), currentActor()])
   const signals: TrustSignals = { expertValidations: 0, successfulUses: 0, views: 0, confirmations: 0, contradictions: 0 }
@@ -97,6 +100,7 @@ export async function createDocument(file: File, input: NewDocument): Promise<st
     title: input.title.trim(),
     description: input.description.trim(),
     category: input.category.trim(),
+    domain: input.domain,
     tags: input.tags,
     fileName: file.name,
     mimeType,
@@ -118,7 +122,7 @@ export async function createDocument(file: File, input: NewDocument): Promise<st
   batch.set(contentRef(ref.id), { base64, mimeType, sha256 } satisfies DocumentContent)
   batch.set(
     doc(historyCol(ref.id)),
-    scoreEvent(ref.id, score, score, { source: 'initial', reason: 'Création du document', volatility: 0, signals }, actor),
+    scoreEvent(ref.id, score, score, { source: 'initial', reason: 'Document created', volatility: 0, signals }, actor),
   )
   await batch.commit()
   return ref.id
@@ -150,7 +154,7 @@ export const toDataUrl = (content: DocumentContent) => `data:${content.mimeType}
 /** Télécharge le fichier sous son nom d'origine */
 export async function downloadDocument(document: Pick<KnowledgeDocument, 'id' | 'fileName'>) {
   const content = await getDocumentContent(document.id)
-  if (!content) throw new Error('Le fichier est introuvable.')
+  if (!content) throw new Error('File not found.')
   const blob = await (await fetch(toDataUrl(content))).blob()
   const url = URL.createObjectURL(blob)
   const link = Object.assign(window.document.createElement('a'), { href: url, download: document.fileName })
@@ -162,9 +166,24 @@ export async function downloadDocument(document: Pick<KnowledgeDocument, 'id' | 
 export const searchDocuments = (query: string) =>
   call<{ query: string }, { minScore: number; results: SearchResult[] }>('searchDocuments', { query })
 
-/** Valide le document ; le gain dépend de l'accréditation (voir utils/trust.ts) */
-export const validateDocument = (id: string) =>
-  call<{ id: string }, { score: number; delta: number }>('validateDocument', { id })
+export interface ValidationResult {
+  score: number
+  delta: number
+  domain: DomainId
+  /** Points d'expertise gagnés par le validateur dans le domaine du document */
+  domainPoints: number
+  grade: Grade
+  previousGrade: Grade
+  /** true si la validation a clos une demande de revue adressée à l'utilisateur */
+  reviewClosed: boolean
+}
+
+/** Valide le document ; le gain dépend de l'accréditation (voir utils/trust.ts et utils/expertise.ts) */
+export const validateDocument = (id: string) => call<{ id: string }, ValidationResult>('validateDocument', { id })
+
+/** Experts les mieux notés dans le domaine du document, capables de le lire et de le valider */
+export const recommendExperts = (id: string) =>
+  call<{ id: string }, { domain: DomainId; unreliable: boolean; experts: RecommendedExpert[] }>('recommendExperts', { id })
 
 export const recordDocumentView = (id: string) => call<{ id: string }, { ok: boolean }>('recordDocumentView', { id })
 
@@ -221,7 +240,7 @@ export async function recordScoreChange(id: string, newScore: number, source: Sc
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref)
-    if (!snap.exists()) throw new Error('Document introuvable.')
+    if (!snap.exists()) throw new Error('Document not found.')
     const previousScore = snap.get('score') as number
     const delta = score - previousScore
     const volatility = volatilityFrom([delta, ...recent.docs.map((d) => d.get('delta') as number)])

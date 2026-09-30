@@ -29,7 +29,7 @@ export function volatilityFrom(deltas: number[]) {
 export const deltaPctOf = (previousScore: number, delta: number) =>
   previousScore === 0 ? 0 : Math.round((delta / previousScore) * 1000) / 10
 
-export const formatPct = (pct: number) => `${pct > 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')} %`
+export const formatPct = (pct: number) => `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`
 
 /** Niveau d'accréditation à partir duquel un document de ce score est visible */
 export const clearanceNeededFor = (score: number) => Math.max(0, 100 - score)
@@ -37,9 +37,9 @@ export const clearanceNeededFor = (score: number) => Math.max(0, 100 - score)
 export const formatDelta = (delta: number) => (delta > 0 ? `+${delta}` : `${delta}`)
 
 export function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} o`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} Ko`
-  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 /** Référence affichée d'un document Firestore, ex. DX-7F3A2C */

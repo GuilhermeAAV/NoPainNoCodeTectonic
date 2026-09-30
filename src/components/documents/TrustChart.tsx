@@ -6,15 +6,15 @@ type Interval = 'event' | 'day' | 'week'
 type Range = '7d' | '1m' | '3m' | 'all'
 
 const INTERVALS: { key: Interval; label: string }[] = [
-  { key: 'event', label: 'Mouvement' },
-  { key: 'day', label: 'Jour' },
-  { key: 'week', label: 'Semaine' },
+  { key: 'event', label: 'Change' },
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
 ]
 const RANGES: { key: Range; label: string; days: number | null }[] = [
-  { key: '7d', label: '7J', days: 7 },
+  { key: '7d', label: '7D', days: 7 },
   { key: '1m', label: '1M', days: 30 },
   { key: '3m', label: '3M', days: 91 },
-  { key: 'all', label: 'Tout', days: null },
+  { key: 'all', label: 'All', days: null },
 ]
 
 /** Bougie OHLC : ouverture = score avant le premier mouvement de la période, clôture = score après le dernier */
@@ -79,10 +79,10 @@ const direction = (c: Pick<Candle, 'open' | 'close'>) => (c.close > c.open ? 'up
 
 const formatDate = (d: Date, interval: Interval) =>
   interval === 'event'
-    ? d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : interval === 'week'
-      ? `Semaine du ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
-      : d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+      ? `Week of ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+      : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 
 // Géométrie en pixels ; la largeur suit le conteneur pour garder un texte lisible sur mobile
 const TOP = 8
@@ -128,7 +128,7 @@ export default function TrustChart({ events, readerFloor }: Props) {
   if (events.length === 0)
     return (
       <div className="tv" ref={box}>
-        <p className="muted">Aucun mouvement enregistré.</p>
+        <p className="muted">No score changes yet.</p>
       </div>
     )
 
@@ -185,14 +185,14 @@ export default function TrustChart({ events, readerFloor }: Props) {
   return (
     <div className="tv" ref={box}>
       <div className="tv__toolbar">
-        <div className="segmented" role="group" aria-label="Période">
+        <div className="segmented" role="group" aria-label="Period">
           {RANGES.map((r) => (
             <button key={r.key} type="button" aria-pressed={range === r.key} onClick={() => (setRange(r.key), setActive(null))}>
               {r.label}
             </button>
           ))}
         </div>
-        <div className="segmented" role="group" aria-label="Intervalle des bougies">
+        <div className="segmented" role="group" aria-label="Candle interval">
           {INTERVALS.map((i) => (
             <button
               key={i.key}
@@ -208,21 +208,21 @@ export default function TrustChart({ events, readerFloor }: Props) {
 
       <dl className="tv__summary">
         <div>
-          <dt>Variation</dt>
+          <dt>Change</dt>
           <dd className={`tv__${direction({ open: periodOpen, close: periodClose })}`}>
             {formatDelta(periodDelta)} <span>{formatPct(deltaPctOf(periodOpen, periodDelta))}</span>
           </dd>
         </div>
         <div>
-          <dt>Plus haut</dt>
+          <dt>High</dt>
           <dd>{high}</dd>
         </div>
         <div>
-          <dt>Plus bas</dt>
+          <dt>Low</dt>
           <dd>{low}</dd>
         </div>
         <div>
-          <dt>Mouvements</dt>
+          <dt>Changes</dt>
           <dd>
             {inRange.length} <span>▲ {ups} · ▼ {downs}</span>
           </dd>
@@ -230,14 +230,14 @@ export default function TrustChart({ events, readerFloor }: Props) {
       </dl>
 
       {candles.length === 0 ? (
-        <p className="empty">Aucun mouvement sur cette période. Le score est resté à {periodClose}.</p>
+        <p className="empty">No changes in this period. The score stayed at {periodClose}.</p>
       ) : (
         <div className="tv__chart">
           {shown && (
             <p className="tv__legend mono" aria-live="polite">
               <span>{formatDate(shown.start, interval)}</span>
               <span>
-                Ouv. <b>{shown.open}</b> Haut <b>{shown.high}</b> Bas <b>{shown.low}</b> Clôt. <b>{shown.close}</b>
+                O <b>{shown.open}</b> H <b>{shown.high}</b> L <b>{shown.low}</b> C <b>{shown.close}</b>
               </span>
               <span className={`tv__${direction(shown)}`}>
                 {formatDelta(shown.close - shown.open)} ({formatPct(deltaPctOf(shown.open, shown.close - shown.open))})
@@ -250,7 +250,7 @@ export default function TrustChart({ events, readerFloor }: Props) {
           <svg
             viewBox={`0 0 ${W} ${H}`}
             role="img"
-            aria-label={`Cotation du score de confiance : de ${periodOpen} à ${periodClose} sur la période, ${inRange.length} mouvements. Détail dans le journal ci-dessous.`}
+            aria-label={`Trust score chart: from ${periodOpen} to ${periodClose} over the period, ${inRange.length} change${inRange.length === 1 ? '' : 's'}. Details in the score history below.`}
             tabIndex={0}
             onMouseMove={pick}
             onMouseLeave={() => setActive(null)}
@@ -270,7 +270,7 @@ export default function TrustChart({ events, readerFloor }: Props) {
               <g className="tv__floor">
                 <line x1={LEFT} x2={W - RIGHT} y1={y(readerFloor)} y2={y(readerFloor)} />
                 <text x={LEFT + 4} y={y(readerFloor) - 6}>
-                  Votre seuil de visibilité · {readerFloor}
+                  Your visibility threshold · {readerFloor}
                 </text>
               </g>
             )}
@@ -303,21 +303,21 @@ export default function TrustChart({ events, readerFloor }: Props) {
 
             <line className="tv__sep" x1={LEFT} x2={W - RIGHT} y1={volTop - GAP / 2} y2={volTop - GAP / 2} />
             <text className="tv__pane-label" x={LEFT + 4} y={volTop + 10}>
-              Volume de mouvements
+              Change volume
             </text>
             {candles.map(
               (c, i) =>
                 i % labelEvery === 0 && (
                   <text key={c.key} className="tv__xlabel" x={cx(i)} y={H - 6} textAnchor="middle">
-                    {c.start.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    {c.start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </text>
                 ),
             )}
           </svg>
           <p className="tv__legend-keys muted">
-            <span className="tv__key tv__key--up" /> Hausse (bougie creuse) <span className="tv__key tv__key--down" /> Baisse
-            (bougie pleine) <span className="tv__key tv__key--floor" /> Votre seuil : en dessous, le document vous serait
-            masqué
+            <span className="tv__key tv__key--up" /> Up (hollow candle) <span className="tv__key tv__key--down" /> Down (filled
+            candle) <span className="tv__key tv__key--floor" /> Your threshold: below it, this document would be hidden
+            from you
           </p>
         </div>
       )}

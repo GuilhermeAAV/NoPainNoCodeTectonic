@@ -1,0 +1,236 @@
+{
+  "scannedDocs": 1284,
+  "lastScan": "4 min ago",
+  "health": {
+    "score": 78,
+    "scoreDelta": -2,
+    "official": 64,
+    "current": 81,
+    "consistent": 88,
+    "conflicts": 12,
+    "conflictsDelta": 3,
+    "conflictsWeekly": [
+      6,
+      7,
+      7,
+      9,
+      9,
+      10,
+      12
+    ],
+    "gaps": 5,
+    "gapsRising": 2,
+    "gapsWeekly": [
+      3,
+      3,
+      4,
+      4,
+      4,
+      5,
+      5
+    ]
+  },
+  "conflicts": [
+    {
+      "id": "c-1042",
+      "topic": "Belgian holiday pay allowance",
+      "context": "Full-time employee, started 2024",
+      "detected": "Detected 2 hours ago",
+      "severity": "High",
+      "difference": "5 days apart",
+      "flags": [
+        "Answers differ by 5 days",
+        "Official source is outdated",
+        "Newer source is unofficial"
+      ],
+      "verdict": "The approved HR manual predates the 2025 revision, and the newer answer only exists in a chat thread. Neither source is both current and official, so the answer should not be shown to employees as settled.",
+      "expert": "Belgian payroll expert",
+      "sources": [
+        {
+          "id": "src-a",
+          "name": "HR Manual.pdf",
+          "kind": "pdf",
+          "location": "SharePoint / HR / Policies",
+          "status": "Outdated",
+          "tone": "danger",
+          "value": "20",
+          "unit": "days",
+          "excerpt": "Full-time employees are entitled to 20 days of annual holiday allowance.",
+          "highlight": "20 days",
+          "updated": "Mar 2023",
+          "age": "3 years old",
+          "official": true,
+          "owner": "HR Policy Team",
+          "confidence": 45
+        },
+        {
+          "id": "src-b",
+          "name": "Payroll Teams channel",
+          "kind": "chat",
+          "location": "Teams / Payroll Support",
+          "status": "Recent, unofficial",
+          "tone": "warn",
+          "value": "25",
+          "unit": "days",
+          "excerpt": "Confirmed with legal: the allowance is now 25 days for new full-time hires.",
+          "highlight": "25 days",
+          "updated": "Feb 2026",
+          "age": "8 months old",
+          "official": false,
+          "owner": "Posted by a team member",
+          "confidence": 60
+        }
+      ]
+    },
+    {
+      "id": "c-1038",
+      "topic": "Notice period after 5 years of service",
+      "context": "Employees dismissed by the employer",
+      "detected": "Detected yesterday",
+      "severity": "High",
+      "difference": "1 month apart",
+      "flags": [
+        "Answers differ by 1 month",
+        "Wiki page is still a draft"
+      ],
+      "verdict": "The collective agreement is official but has not been reviewed since 2022. The wiki draft reflects newer guidance but was never approved, so employees could receive either answer.",
+      "expert": "Belgian employment law expert",
+      "sources": [
+        {
+          "id": "src-c",
+          "name": "Collective agreement.pdf",
+          "kind": "pdf",
+          "location": "SharePoint / Legal / Agreements",
+          "status": "Official, not reviewed",
+          "tone": "warn",
+          "value": "3",
+          "unit": "months",
+          "excerpt": "After five years of service the notice period is 3 months.",
+          "highlight": "3 months",
+          "updated": "Jun 2022",
+          "age": "4 years old",
+          "official": true,
+          "owner": "Legal Department",
+          "confidence": 62
+        },
+        {
+          "id": "src-d",
+          "name": "Payroll wiki: Termination",
+          "kind": "wiki",
+          "location": "Wiki / Payroll / Termination",
+          "status": "Draft",
+          "tone": "danger",
+          "value": "4",
+          "unit": "months",
+          "excerpt": "For service of five years or more, plan for a 4 months notice period.",
+          "highlight": "4 months",
+          "updated": "Sep 2025",
+          "age": "1 year old",
+          "official": false,
+          "owner": "Wiki contributor",
+          "confidence": 38
+        }
+      ]
+    },
+    {
+      "id": "c-1031",
+      "topic": "Company car tax deduction rate",
+      "context": "Hybrid vehicles ordered in 2025",
+      "detected": "Detected 3 days ago",
+      "severity": "Medium",
+      "difference": "25 points apart",
+      "flags": [
+        "Answers differ by 25 points",
+        "Circular may be superseded"
+      ],
+      "verdict": "The fiscal circular is the official reference but may have been superseded by later legislation. The wiki quotes a lower rate without naming its source.",
+      "expert": "Belgian tax expert",
+      "sources": [
+        {
+          "id": "src-e",
+          "name": "Fiscal circular 2024.pdf",
+          "kind": "pdf",
+          "location": "SharePoint / Finance / Tax",
+          "status": "Official, may be superseded",
+          "tone": "warn",
+          "value": "75",
+          "unit": "%",
+          "excerpt": "The deductible share for hybrid company cars is 75% of costs.",
+          "highlight": "75%",
+          "updated": "Jan 2024",
+          "age": "2 years old",
+          "official": true,
+          "owner": "Tax & Finance",
+          "confidence": 58
+        },
+        {
+          "id": "src-f",
+          "name": "Payroll wiki: Mobility",
+          "kind": "wiki",
+          "location": "Wiki / Payroll / Mobility",
+          "status": "No cited source",
+          "tone": "danger",
+          "value": "50",
+          "unit": "%",
+          "excerpt": "Current deduction for hybrids is 50% unless the vehicle is fully electric.",
+          "highlight": "50%",
+          "updated": "Dec 2025",
+          "age": "10 months old",
+          "official": false,
+          "owner": "Wiki contributor",
+          "confidence": 41
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "g-1",
+      "query": "Expat tax status change 2026",
+      "count": 42,
+      "change": 38,
+      "trend": "up",
+      "weekly": [
+        14,
+        18,
+        22,
+        26,
+        31,
+        36,
+        42
+      ]
+    },
+    {
+      "id": "g-2",
+      "query": "Remote work policy cross-border",
+      "count": 18,
+      "change": 20,
+      "trend": "up",
+      "weekly": [
+        10,
+        11,
+        12,
+        13,
+        15,
+        16,
+        18
+      ]
+    },
+    {
+      "id": "g-3",
+      "query": "Mobility budget electric vehicle",
+      "count": 12,
+      "change": 0,
+      "trend": "flat",
+      "weekly": [
+        12,
+        11,
+        13,
+        12,
+        12,
+        13,
+        12
+      ]
+    }
+  ]
+}
