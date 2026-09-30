@@ -4,6 +4,7 @@ import HomePage from '@/pages/HomePage'
 import AboutPage from '@/pages/AboutPage'
 import DashboardPage from '@/pages/DashboardPage'
 import SearchPage from '@/pages/SearchPage'
+import DocumentPage from '@/pages/DocumentPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import LoginPage from '@/pages/LoginPage'
 import ProfilesPage from '@/pages/ProfilesPage'
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'search', element: <SearchPage /> },
+      { path: 'documents/:id', element: <DocumentPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'login', element: <LoginPage /> },
       {

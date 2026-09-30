@@ -98,19 +98,63 @@ export interface DocumentContent {
 
 export type ScoreSource = 'initial' | 'expert' | 'usage' | 'freshness' | 'consistency' | 'contradiction' | 'manual'
 
+/**
+ * Un mouvement du Trust Score — une ligne du journal documents/{docId}/scoreHistory, append-only.
+ * Les champs marqués « optionnel » sont absents des événements écrits avant l'enrichissement du schéma.
+ */
 export interface ScoreEvent {
   id: string
+  documentId: string
+  /** Score après le mouvement (clôture) */
   score: number
+  /** Score avant le mouvement (ouverture) */
   previousScore: number
+  /** Variation en points */
   delta: number
+  /** Variation relative au score précédent, en % (arrondie au dixième) */
+  deltaPct: number
   source: ScoreSource
   /** Raison lisible de la variation */
   reason: string
   actorId: string | null
+  /** Accréditation de l'acteur au moment du mouvement (null : système ou inconnu) */
+  actorClearance: number | null
+  actorRole: Role | null
+  /** Niveau d'accréditation requis pour voir le document avant / après le mouvement */
+  visibilityBefore: number
+  visibilityAfter: number
+  /** Volatilité du document après le mouvement (optionnel) */
+  volatility?: number
+  /** Instantané des signaux après le mouvement (optionnel) */
+  signals?: TrustSignals
   at: string
 }
 
 export type NewDocument = Pick<KnowledgeDocument, 'title' | 'description' | 'category' | 'tags'> & {
   /** Score initial, 50 par défaut */
   score?: number
+}
+
+/** Résultat de la recherche IA (Cloud Function searchDocuments) */
+export interface SearchResult {
+  id: string
+  /** Adéquation à la demande de 0 à 100 */
+  relevance: number
+  /** Explication en une phrase */
+  reason: string
+  document: Pick<
+    KnowledgeDocument,
+    | 'title'
+    | 'description'
+    | 'category'
+    | 'tags'
+    | 'fileName'
+    | 'mimeType'
+    | 'score'
+    | 'delta'
+    | 'volatility'
+    | 'conflictsWith'
+    | 'reviewRequested'
+    | 'updatedAt'
+  >
 }

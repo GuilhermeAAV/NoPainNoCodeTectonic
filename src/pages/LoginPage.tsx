@@ -35,6 +35,7 @@ export default function LoginPage() {
   return (
     <section className="auth">
       <h1>Connexion</h1>
+      <p className="muted">Votre niveau d'accréditation détermine les documents que vous pouvez ouvrir.</p>
       <form className="card form" onSubmit={handleSubmit}>
         <label className="field">
           <span>Adresse mail</span>

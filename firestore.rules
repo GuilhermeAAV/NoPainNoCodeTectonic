@@ -14,6 +14,16 @@ service cloud.firestore {
       return v is int && v >= 0 && v <= 100;
     }
 
+    // Score minimum accessible = 100 - niveau d'accréditation (ex. accréditation 20 → documents ≥ 80)
+    function canReadScore(score) {
+      return isAdmin() || (signedIn() && request.auth.token.clearance is int
+        && score >= 100 - request.auth.token.clearance);
+    }
+
+    function canReadDocument(docId) {
+      return canReadScore(get(/databases/$(database)/documents/documents/$(docId)).data.score);
+    }
+
     function isCount(v) {
       return v is int && v >= 0;
     }
@@ -32,6 +42,16 @@ service cloud.firestore {
         && d.conflictsWith is list && d.reviewRequested is bool;
     }
 
+    // Une ligne du journal des mouvements : la variation doit être cohérente avec les scores
+    function validScoreEvent(e) {
+      return e.keys().hasAll(['score', 'previousScore', 'delta', 'source', 'reason', 'at'])
+        && isScore(e.score) && isScore(e.previousScore)
+        && e.delta == e.score - e.previousScore
+        && e.source in ['initial', 'expert', 'usage', 'freshness', 'consistency', 'contradiction', 'manual']
+        && e.reason is string && e.reason.size() <= 300
+        && e.at is timestamp;
+    }
+
     // Un utilisateur lit son propre profil, l'admin lit tous les profils.
     // Aucune écriture côté client : tout passe par les Cloud Functions.
     match /profiles/{uid} {
@@ -39,15 +59,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // TODO : filtrer la lecture selon le score et l'accréditation (request.auth.token.clearance)
+    // Les requêtes doivent filtrer sur score >= minScoreFor(clearance), sinon elles sont refusées
     match /documents/{docId} {
-      allow read: if signedIn();
+      allow read: if canReadScore(resource.data.score);
       allow create, update: if isAdmin() && validDocument(request.resource.data);
       allow delete: if isAdmin();
 
       // Fichier en base64 ; limite Firestore de 1 Mio par document
       match /content/{contentId} {
-        allow read: if signedIn();
+        allow read: if canReadDocument(docId);
         allow write: if isAdmin()
           && request.resource.data.base64 is string
           && request.resource.data.base64.size() <= 1000000;
@@ -56,9 +76,15 @@ service cloud.firestore {
 
       // Historique des scores : ajout uniquement, jamais modifié
       match /scoreHistory/{eventId} {
-        allow read: if signedIn();
-        allow create: if isAdmin() && isScore(request.resource.data.score) && request.resource.data.reason is string;
+        allow read: if canReadDocument(docId);
+        allow create: if isAdmin() && validScoreEvent(request.resource.data);
         allow update, delete: if false;
+      }
+
+      // Une validation par utilisateur (id = uid), écrite uniquement par la Cloud Function validateDocument
+      match /validations/{uid} {
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow write: if false;
       }
     }
 

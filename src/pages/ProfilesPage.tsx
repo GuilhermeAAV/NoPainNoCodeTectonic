@@ -2,15 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import Button from '@/components/ui/Button'
 import { MIN_PASSWORD_LENGTH, createProfile, deleteProfile, listProfiles } from '@/services/profiles'
 import type { NewProfile, Profile } from '@/types'
+import { clearanceLabel } from '@/utils/clearance'
 
 const emptyForm: NewProfile = { firstName: '', lastName: '', email: '', clearance: 50, password: '' }
-
-function clearanceLabel(clearance: number) {
-  if (clearance >= 80) return 'Expert'
-  if (clearance >= 50) return 'Senior'
-  if (clearance >= 20) return 'Confirmé'
-  return 'Junior'
-}
 
 export default function ProfilesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])

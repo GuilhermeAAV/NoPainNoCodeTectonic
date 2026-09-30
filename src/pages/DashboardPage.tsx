@@ -1,10 +1,15 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 import { items } from '@/data/items'
 import type { ItemStatus } from '@/types'
+import { canRead, docRef, readerLevel } from '@/utils/clearance'
 
-const statuses: ItemStatus[] = ['actif', 'en pause', 'terminé']
+const statuses: ItemStatus[] = ['diffusé', 'en relecture', 'archivé']
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+  const level = readerLevel(user)
+
   const byCategory = Object.entries(
     items.reduce<Record<string, number>>((acc, item) => {
       acc[item.category] = (acc[item.category] ?? 0) + 1
@@ -17,11 +22,11 @@ export default function DashboardPage() {
 
   return (
     <section>
-      <h1>Dashboard</h1>
+      <h1>Tableau de bord</h1>
 
       <div className="stats">
         <div className="card stat">
-          <span className="stat__label">Total</span>
+          <span className="stat__label">Documents</span>
           <span className="stat__value">{items.length}</span>
         </div>
         {statuses.map((status) => (
@@ -34,7 +39,7 @@ export default function DashboardPage() {
 
       <div className="dashboard__grid">
         <div className="card">
-          <h2>Par catégorie</h2>
+          <h2>Par service</h2>
           <ul className="bars">
             {byCategory.map(([category, count]) => (
               <li key={category} className="bars__row">
@@ -49,19 +54,21 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h2>Activité récente</h2>
+          <h2>Derniers échanges</h2>
           <ul className="list">
             {recent.map((item) => (
               <li key={item.id} className="list__item">
                 <div>
-                  <strong>{item.title}</strong>
-                  <div className="muted">{item.category}</div>
+                  {canRead(level, item) ? <strong>{item.title}</strong> : <strong className="sealed-text">Pli scellé</strong>}
+                  <div className="muted">
+                    <span className="mono">{docRef(item.id)}</span> · {item.category}
+                  </div>
                 </div>
-                <span className="muted">{new Date(item.updatedAt).toLocaleDateString('fr-FR')}</span>
+                <span className="muted mono">{new Date(item.updatedAt).toLocaleDateString('fr-FR')}</span>
               </li>
             ))}
           </ul>
-          <Link to="/search">Tout voir →</Link>
+          <Link to="/search">Voir tous les documents →</Link>
         </div>
       </div>
     </section>
