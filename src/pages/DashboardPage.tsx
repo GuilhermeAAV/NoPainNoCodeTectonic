@@ -23,8 +23,6 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
-import { fetchDashboard, type DashboardData } from '@/services/dashboard'
-import fallbackData from '@/data/dashboard.json'
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -487,7 +485,6 @@ export default function TrustRadarDashboard() {
             </div>
           </div>
         </div>
-      </header>
 
       <div>
         {/* Knowledge health */}

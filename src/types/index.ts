@@ -95,6 +95,20 @@ export interface KnowledgeDocument {
   conflictsWith: string[]
   /** Révision par un expert demandée (ex. très consulté mais score faible) */
   reviewRequested: boolean
+  /** Faits affirmés par le document, comparés aux autres pour détecter contradictions et confirmations */
+  claims?: KnowledgeClaim[]
+}
+
+/** Un fait chiffré affirmé par un document, ex. « Holiday allowance = 25 days » */
+export interface KnowledgeClaim {
+  /** Sujet libre, comparé sans tenir compte de la casse ni des espaces */
+  topic: string
+  value: string
+  unit: string
+  /** Date d'effet (AAAA-MM-JJ) : en cas de contradiction, la plus ancienne perd du score */
+  effectiveDate: string
+  /** Phrase du document qui porte le fait */
+  excerpt?: string
 }
 
 export interface DocumentContent {
@@ -140,6 +154,7 @@ export interface ScoreEvent {
 export type NewDocument = Pick<KnowledgeDocument, 'title' | 'description' | 'category' | 'domain' | 'tags'> & {
   /** Score initial, 50 par défaut */
   score?: number
+  claims?: KnowledgeClaim[]
 }
 
 /** Résultat de la recherche IA (Cloud Function searchDocuments) */

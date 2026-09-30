@@ -118,6 +118,7 @@ export async function createDocument(file: File, input: NewDocument): Promise<st
     signals,
     conflictsWith: [],
     reviewRequested: false,
+    claims: input.claims ?? [],
   })
   batch.set(contentRef(ref.id), { base64, mimeType, sha256 } satisfies DocumentContent)
   batch.set(
@@ -228,8 +229,20 @@ function scoreEvent(
   }
 }
 
+/** Effets annexes d'un mouvement : signal incrémenté et/ou document en conflit à référencer */
+export interface ScoreChangeExtra {
+  signal?: keyof TrustSignals
+  conflictWith?: string
+}
+
 /** Enregistre une variation de score : met à jour le document et ajoute le mouvement au journal */
-export async function recordScoreChange(id: string, newScore: number, source: ScoreSource, reason: string) {
+export async function recordScoreChange(
+  id: string,
+  newScore: number,
+  source: ScoreSource,
+  reason: string,
+  extra: ScoreChangeExtra = {},
+) {
   const ref = doc(documentsCol, id)
   const score = clampScore(newScore)
   // Les transactions client ne lisent pas de requêtes : les derniers mouvements sont lus juste avant
@@ -244,9 +257,21 @@ export async function recordScoreChange(id: string, newScore: number, source: Sc
     const previousScore = snap.get('score') as number
     const delta = score - previousScore
     const volatility = volatilityFrom([delta, ...recent.docs.map((d) => d.get('delta') as number)])
-    const signals = snap.get('signals') as TrustSignals
+    const signals = { ...(snap.get('signals') as TrustSignals) }
+    if (extra.signal) signals[extra.signal] += 1
+    const conflictsWith = snap.get('conflictsWith') as string[]
+    if (extra.conflictWith && !conflictsWith.includes(extra.conflictWith)) conflictsWith.push(extra.conflictWith)
 
-    tx.update(ref, { score, previousScore, delta, volatility, lastScoredAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    tx.update(ref, {
+      score,
+      previousScore,
+      delta,
+      volatility,
+      signals,
+      conflictsWith,
+      lastScoredAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
     tx.set(doc(historyCol(id)), scoreEvent(id, previousScore, score, { source, reason, volatility, signals }, actor))
   })
 }
