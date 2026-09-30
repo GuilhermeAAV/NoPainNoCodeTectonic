@@ -1,7 +1,9 @@
 node_modules
 dist
+# Variables d'environnement : seules les valeurs d'exemple sont versionnées
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
 *.log
 *.tsbuildinfo
