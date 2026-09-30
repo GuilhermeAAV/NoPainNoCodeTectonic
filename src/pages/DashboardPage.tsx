@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { collection, doc, onSnapshot, updateDoc, increment, setDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from '../services/firebase'
+import SimulatePanel from '@/components/dashboard/SimulatePanel'
 
 import {
   BadgeCheck,
@@ -333,6 +334,7 @@ export default function TrustRadarDashboard() {
   const [escalation, setEscalation] = useState<Record<string, 'sending' | 'sent'>>({})
   const [drafts, setDrafts] = useState<Record<string, 'drafting' | 'drafted'>>({})
   const [loading, setLoading] = useState(true)
+  const [simulating, setSimulating] = useState(false)
 
   // Real-time Firebase Listeners
   useEffect(() => {
@@ -362,22 +364,6 @@ export default function TrustRadarDashboard() {
       unsubGaps()
     }
   }, [])
-
-  // Hackathon Wow Factor: Simulate a real-time event
-  const simulateNewKnowledgeUpload = async () => {
-    try {
-      const healthRef = doc(db, 'health', 'latest-stats')
-      await updateDoc(healthRef, {
-        score: increment(-3),
-        conflicts: increment(1),
-        conflictsDelta: increment(1),
-        scannedDocs: increment(1),
-        lastScan: 'Just now'
-      })
-    } catch (error) {
-      console.error("Error updating knowledge base:", error)
-    }
-  }
 
   // Reset function properly placed inside the component scope
   const resetDatabase = async () => {
@@ -435,6 +421,7 @@ export default function TrustRadarDashboard() {
       }}
     >
       <style>{STYLES}</style>
+      {simulating && <SimulatePanel onClose={() => setSimulating(false)} onConflict={setActiveId} />}
 
       {/* Titre de page : l'en-tête global du site (Header) remplace l'ancien en-tête collant */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -450,10 +437,10 @@ export default function TrustRadarDashboard() {
 
           <div className="flex items-center gap-4 sm:gap-6">
             <button 
-              onClick={simulateNewKnowledgeUpload}
-              className="hidden rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm transition-all hover:bg-indigo-100 active:scale-95 sm:block"
+              onClick={() => setSimulating(true)}
+              className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm transition-all hover:bg-indigo-100 active:scale-95"
             >
-              + Simulate Upload
+              + Simulate
             </button>
 
             <button 
