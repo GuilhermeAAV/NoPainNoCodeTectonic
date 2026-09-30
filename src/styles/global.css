@@ -1,6 +1,4 @@
-/* DocExchange — direction « enveloppe de sécurité »
-   Le motif de sécurité (.tint) ne décore jamais : il recouvre ce qui dépasse le niveau du lecteur. */
-
+@import "tailwindcss";
 :root {
   --color-paper: #fbfcfe;       /* papier de l'enveloppe */
   --color-ink: #14213d;         /* texte */
