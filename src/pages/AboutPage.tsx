@@ -3,7 +3,7 @@ export default function AboutPage() {
     <section className="prose">
       <h1>About</h1>
       <p>
-        DocExchange brings an organisation’s internal documents together and gives each one a trust score from 0 to
+        Verifio brings an organisation’s internal documents together and gives each one a trust score from 0 to
         100. Validations from experts raise it. Conflicts with other sources and outdated content lower it.
       </p>
       <p>

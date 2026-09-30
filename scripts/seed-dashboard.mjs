@@ -13,7 +13,8 @@ if (!email || !password) {
 
 const { projects } = JSON.parse(readFileSync(new URL('../.firebaserc', import.meta.url), 'utf8'))
 const data = JSON.parse(readFileSync(new URL('../src/data/dashboard.json', import.meta.url), 'utf8'))
-const app = initializeApp({ apiKey: 'REMOVED_FIREBASE_API_KEY', projectId: projects.default })
+process.loadEnvFile(new URL('../.env', import.meta.url))
+const app = initializeApp({ apiKey: process.env.VITE_FIREBASE_API_KEY, projectId: projects.default })
 const auth = getAuth(app)
 const db = getFirestore(app)
 // Les règles n'autorisent l'écriture qu'à un admin

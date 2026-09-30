@@ -48,10 +48,10 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl">
       <div className="shell flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-3.5">
-        <NavLink to="/" className={`flex items-center gap-3 rounded-xl no-underline ${FOCUS}`} aria-label="DocExchange, home">
+        <NavLink to="/" className={`flex items-center gap-3 rounded-xl no-underline ${FOCUS}`} aria-label="Verifio, home">
           <Logo />
           <span>
-            <span className="display block text-xl font-extrabold leading-none text-[#2B0B45]">DocExchange</span>
+            <span className="display block text-xl font-extrabold leading-none text-[#2B0B45]">Verifio</span>
             <span className="mt-1 block text-xs text-slate-500">Internal knowledge, rated by trust</span>
           </span>
         </NavLink>
