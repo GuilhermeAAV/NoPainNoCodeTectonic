@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { collection, doc, onSnapshot, updateDoc, increment, setDoc } from 'firebase/firestore'
+import { db } from '../services/firebase'
+
 import {
   BadgeCheck,
   Check,
@@ -22,7 +25,7 @@ import {
 } from 'lucide-react'
 
 /* -------------------------------------------------------------------------- */
-/*  Types & mock data                                                         */
+/*  Types                                                                     */
 /* -------------------------------------------------------------------------- */
 
 type Tone = 'danger' | 'warn' | 'ok'
@@ -65,175 +68,6 @@ interface Gap {
   change: number
   trend: 'up' | 'flat'
   weekly: number[]
-}
-
-const MOCK_BACKEND = {
-  scannedDocs: 1284,
-  lastScan: '4 min ago',
-  health: {
-    score: 78,
-    scoreDelta: -2,
-    official: 64,
-    current: 81,
-    consistent: 88,
-    conflicts: 12,
-    conflictsDelta: 3,
-    conflictsWeekly: [6, 7, 7, 9, 9, 10, 12],
-    gaps: 5,
-    gapsRising: 2,
-    gapsWeekly: [3, 3, 4, 4, 4, 5, 5],
-  },
-  conflicts: [
-    {
-      id: 'c-1042',
-      topic: 'Belgian holiday pay allowance',
-      context: 'Full-time employee, started 2024',
-      detected: 'Detected 2 hours ago',
-      severity: 'High',
-      difference: '5 days apart',
-      flags: ['Answers differ by 5 days', 'Official source is outdated', 'Newer source is unofficial'],
-      verdict:
-        'The approved HR manual predates the 2025 revision, and the newer answer only exists in a chat thread. Neither source is both current and official, so the answer should not be shown to employees as settled.',
-      expert: 'Belgian payroll expert',
-      sources: [
-        {
-          id: 'src-a',
-          name: 'HR Manual.pdf',
-          kind: 'pdf',
-          location: 'SharePoint / HR / Policies',
-          status: 'Outdated',
-          tone: 'danger',
-          value: '20',
-          unit: 'days',
-          excerpt: 'Full-time employees are entitled to 20 days of annual holiday allowance.',
-          highlight: '20 days',
-          updated: 'Mar 2023',
-          age: '3 years old',
-          official: true,
-          owner: 'HR Policy Team',
-          confidence: 45,
-        },
-        {
-          id: 'src-b',
-          name: 'Payroll Teams channel',
-          kind: 'chat',
-          location: 'Teams / Payroll Support',
-          status: 'Recent, unofficial',
-          tone: 'warn',
-          value: '25',
-          unit: 'days',
-          excerpt: 'Confirmed with legal: the allowance is now 25 days for new full-time hires.',
-          highlight: '25 days',
-          updated: 'Feb 2026',
-          age: '8 months old',
-          official: false,
-          owner: 'Posted by a team member',
-          confidence: 60,
-        },
-      ],
-    },
-    {
-      id: 'c-1038',
-      topic: 'Notice period after 5 years of service',
-      context: 'Employees dismissed by the employer',
-      detected: 'Detected yesterday',
-      severity: 'High',
-      difference: '1 month apart',
-      flags: ['Answers differ by 1 month', 'Wiki page is still a draft'],
-      verdict:
-        'The collective agreement is official but has not been reviewed since 2022. The wiki draft reflects newer guidance but was never approved, so employees could receive either answer.',
-      expert: 'Belgian employment law expert',
-      sources: [
-        {
-          id: 'src-c',
-          name: 'Collective agreement.pdf',
-          kind: 'pdf',
-          location: 'SharePoint / Legal / Agreements',
-          status: 'Official, not reviewed',
-          tone: 'warn',
-          value: '3',
-          unit: 'months',
-          excerpt: 'After five years of service the notice period is 3 months.',
-          highlight: '3 months',
-          updated: 'Jun 2022',
-          age: '4 years old',
-          official: true,
-          owner: 'Legal Department',
-          confidence: 62,
-        },
-        {
-          id: 'src-d',
-          name: 'Payroll wiki: Termination',
-          kind: 'wiki',
-          location: 'Wiki / Payroll / Termination',
-          status: 'Draft',
-          tone: 'danger',
-          value: '4',
-          unit: 'months',
-          excerpt: 'For service of five years or more, plan for a 4 months notice period.',
-          highlight: '4 months',
-          updated: 'Sep 2025',
-          age: '1 year old',
-          official: false,
-          owner: 'Wiki contributor',
-          confidence: 38,
-        },
-      ],
-    },
-    {
-      id: 'c-1031',
-      topic: 'Company car tax deduction rate',
-      context: 'Hybrid vehicles ordered in 2025',
-      detected: 'Detected 3 days ago',
-      severity: 'Medium',
-      difference: '25 points apart',
-      flags: ['Answers differ by 25 points', 'Circular may be superseded'],
-      verdict:
-        'The fiscal circular is the official reference but may have been superseded by later legislation. The wiki quotes a lower rate without naming its source.',
-      expert: 'Belgian tax expert',
-      sources: [
-        {
-          id: 'src-e',
-          name: 'Fiscal circular 2024.pdf',
-          kind: 'pdf',
-          location: 'SharePoint / Finance / Tax',
-          status: 'Official, may be superseded',
-          tone: 'warn',
-          value: '75',
-          unit: '%',
-          excerpt: 'The deductible share for hybrid company cars is 75% of costs.',
-          highlight: '75%',
-          updated: 'Jan 2024',
-          age: '2 years old',
-          official: true,
-          owner: 'Tax & Finance',
-          confidence: 58,
-        },
-        {
-          id: 'src-f',
-          name: 'Payroll wiki: Mobility',
-          kind: 'wiki',
-          location: 'Wiki / Payroll / Mobility',
-          status: 'No cited source',
-          tone: 'danger',
-          value: '50',
-          unit: '%',
-          excerpt: 'Current deduction for hybrids is 50% unless the vehicle is fully electric.',
-          highlight: '50%',
-          updated: 'Dec 2025',
-          age: '10 months old',
-          official: false,
-          owner: 'Wiki contributor',
-          confidence: 41,
-        },
-      ],
-    },
-  ] as Conflict[],
-  gaps: [
-    { id: 'g-1', query: 'Expat tax status change 2026', count: 42, change: 38, trend: 'up', weekly: [14, 18, 22, 26, 31, 36, 42] },
-    { id: 'g-2', query: 'Remote work policy cross-border', count: 18, change: 20, trend: 'up', weekly: [10, 11, 12, 13, 15, 16, 18] },
-    { id: 'g-3', query: 'Mobility budget electric vehicle', count: 12, change: 0, trend: 'flat', weekly: [12, 11, 13, 12, 12, 13, 12] },
-  ] as Gap[],
 }
 
 /* -------------------------------------------------------------------------- */
@@ -325,10 +159,9 @@ function Sparkline({ data, color, w = 88, h = 28 }: { data: number[]; color: str
 function ReliabilityRing({ score }: { score: number }) {
   const r = 52
   const circ = 2 * Math.PI * r
-  const offset = circ * (1 - score / 100)
+  const offset = circ * (1 - (score || 0) / 100)
   return (
     <div className="relative grid size-[136px] shrink-0 place-items-center">
-      {/* quiet radar sweep inside the ring */}
       <div className="absolute inset-[14px] overflow-hidden rounded-full bg-[#FDF2F8]">
         <div
           className="tr-sweep absolute inset-0"
@@ -345,7 +178,7 @@ function ReliabilityRing({ score }: { score: number }) {
         </defs>
         <circle cx="68" cy="68" r={r} fill="none" stroke="#E9E4F0" strokeWidth="9" />
         <circle
-          className="tr-ring"
+          className="tr-ring transition-all duration-700 ease-out"
           cx="68"
           cy="68"
           r={r}
@@ -358,7 +191,7 @@ function ReliabilityRing({ score }: { score: number }) {
           style={{ ['--tr-circ' as string]: circ }}
         />
       </svg>
-      <div className="tr-display relative text-[40px] font-extrabold leading-none text-[#2B0B45]">
+      <div className="tr-display relative text-[40px] font-extrabold leading-none text-[#2B0B45] transition-all duration-300">
         {score}
         <span className="text-xl font-bold text-slate-400">%</span>
       </div>
@@ -479,7 +312,7 @@ function Delta({ value, goodWhenDown = false, suffix = '' }: { value: number; go
   const good = goodWhenDown ? !up : up
   const cls = value === 0 ? 'text-slate-500' : good ? 'text-emerald-700' : 'text-rose-700'
   return (
-    <span className={`text-xs font-semibold ${cls}`}>
+    <span className={`text-xs font-semibold transition-colors duration-300 ${cls}`}>
       {value > 0 ? '+' : ''}
       {value}
       {suffix} this week
@@ -492,18 +325,85 @@ function Delta({ value, goodWhenDown = false, suffix = '' }: { value: number; go
 /* -------------------------------------------------------------------------- */
 
 export default function TrustRadarDashboard() {
-  const [data] = useState(MOCK_BACKEND)
-  const [activeId, setActiveId] = useState(data.conflicts[0].id)
+  const [h, setHealthData] = useState<any>(null)
+  const [conflicts, setConflicts] = useState<Conflict[]>([])
+  const [gaps, setGaps] = useState<Gap[]>([])
+  
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [escalation, setEscalation] = useState<Record<string, 'sending' | 'sent'>>({})
   const [drafts, setDrafts] = useState<Record<string, 'drafting' | 'drafted'>>({})
+  const [loading, setLoading] = useState(true)
 
-  const conflict = data.conflicts.find((c) => c.id === activeId) ?? data.conflicts[0]
-  const escState = escalation[conflict.id]
-  const maxCount = Math.max(...data.gaps.map((g) => g.count))
-  const h = data.health
+  // Real-time Firebase Listeners
+  useEffect(() => {
+    const unsubHealth = onSnapshot(doc(db, 'health', 'latest-stats'), (docSnap) => {
+      if (docSnap.exists()) {
+        setHealthData(docSnap.data())
+      }
+    })
 
-  const handleEscalate = () => {
-    const id = conflict.id
+    const unsubConflicts = onSnapshot(collection(db, 'conflicts'), (snapshot) => {
+      const liveConflicts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conflict))
+      setConflicts(liveConflicts)
+      if (liveConflicts.length > 0) {
+        setActiveId(prev => prev || liveConflicts[0].id)
+      }
+    })
+
+    const unsubGaps = onSnapshot(collection(db, 'gaps'), (snapshot) => {
+      const liveGaps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Gap))
+      setGaps(liveGaps)
+      setLoading(false)
+    })
+
+    return () => {
+      unsubHealth()
+      unsubConflicts()
+      unsubGaps()
+    }
+  }, [])
+
+  // Hackathon Wow Factor: Simulate a real-time event
+  const simulateNewKnowledgeUpload = async () => {
+    try {
+      const healthRef = doc(db, 'health', 'latest-stats')
+      await updateDoc(healthRef, {
+        score: increment(-3),
+        conflicts: increment(1),
+        conflictsDelta: increment(1),
+        scannedDocs: increment(1),
+        lastScan: 'Just now'
+      })
+    } catch (error) {
+      console.error("Error updating knowledge base:", error)
+    }
+  }
+
+  // Reset function properly placed inside the component scope
+  const resetDatabase = async () => {
+    try {
+      const healthRef = doc(db, 'health', 'latest-stats')
+      await setDoc(healthRef, {
+        score: 78,
+        scoreDelta: -2,
+        official: 64,
+        current: 81,
+        consistent: 88,
+        conflicts: 12,
+        conflictsDelta: 3,
+        conflictsWeekly: [6, 7, 7, 9, 9, 10, 12],
+        gaps: 5,
+        gapsRising: 2,
+        gapsWeekly: [3, 3, 4, 4, 4, 5, 5],
+        scannedDocs: 1284,
+        lastScan: '4 min ago'
+      })
+    } catch (error) {
+      console.error("Error resetting:", error)
+    }
+  }
+
+  const handleEscalate = (id: string) => {
     setEscalation((p) => ({ ...p, [id]: 'sending' }))
     setTimeout(() => setEscalation((p) => ({ ...p, [id]: 'sent' })), 1000)
   }
@@ -512,6 +412,19 @@ export default function TrustRadarDashboard() {
     setDrafts((p) => ({ ...p, [id]: 'drafting' }))
     setTimeout(() => setDrafts((p) => ({ ...p, [id]: 'drafted' })), 900)
   }
+
+  if (loading || !h) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F6F4F9]">
+         <Loader2 className="size-10 animate-spin text-[#D3077F]" />
+         <p className="mt-4 text-xs font-bold tracking-widest text-slate-500 uppercase">Loading Trust Radar...</p>
+      </div>
+    )
+  }
+
+  const conflict = conflicts.find((c) => c.id === activeId) ?? conflicts[0]
+  const escState = conflict ? escalation[conflict.id] : null
+  const maxCount = gaps.length > 0 ? Math.max(...gaps.map((g) => g.count)) : 1
 
   return (
     <div
@@ -537,13 +450,26 @@ export default function TrustRadarDashboard() {
           </div>
 
           <div className="flex items-center gap-4 sm:gap-6">
+            <button 
+              onClick={simulateNewKnowledgeUpload}
+              className="hidden rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm transition-all hover:bg-indigo-100 active:scale-95 sm:block"
+            >
+              + Simulate Upload
+            </button>
+
+            <button 
+              onClick={resetDatabase}
+              className="hidden rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 shadow-sm transition-all hover:bg-rose-100 active:scale-95 sm:block"
+            >
+              Reset Data
+            </button>
             <div className="hidden items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 py-1.5 pl-3 pr-4 sm:flex">
               <span className="relative flex size-2.5">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-70 motion-reduce:animate-none" />
                 <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
               </span>
               <span className="text-xs font-semibold text-slate-700">All sources syncing</span>
-              <span className="text-xs text-slate-400">Last scan {data.lastScan}</span>
+              <span className="text-xs text-slate-400">Last scan {h.lastScan}</span>
             </div>
             <div className="flex items-center gap-3 border-l border-slate-200 pl-4 sm:pl-6">
               <div className="hidden text-right sm:block">
@@ -569,8 +495,8 @@ export default function TrustRadarDashboard() {
             <h2 id="health-title" className="tr-display text-2xl font-bold text-[#2B0B45]">
               Knowledge health
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Based on {data.scannedDocs.toLocaleString()} documents across SharePoint, Teams and the payroll wiki.
+            <p className="mt-1 text-sm text-slate-500 transition-all">
+              Based on {h.scannedDocs?.toLocaleString()} documents across SharePoint, Teams and the payroll wiki.
             </p>
           </div>
 
@@ -585,7 +511,7 @@ export default function TrustRadarDashboard() {
                     Needs attention
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs font-semibold text-rose-700">{h.scoreDelta} points this week</p>
+                <p className="mt-0.5 text-xs font-semibold text-rose-700 transition-all">{h.scoreDelta} points this week</p>
                 <dl className="mt-4 space-y-2.5">
                   {[
                     ['Official sources', h.official],
@@ -595,11 +521,11 @@ export default function TrustRadarDashboard() {
                     <div key={label as string}>
                       <div className="flex justify-between text-xs">
                         <dt className="text-slate-500">{label}</dt>
-                        <dd className="font-semibold text-slate-800">{v}%</dd>
+                        <dd className="font-semibold text-slate-800 transition-all">{v}%</dd>
                       </div>
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
                         <div
-                          className="tr-grow h-full rounded-full bg-[#D3077F]"
+                          className="tr-grow h-full rounded-full bg-[#D3077F] transition-all duration-500"
                           style={{ width: `${v}%`, opacity: 0.35 + (v as number) / 160 }}
                         />
                       </div>
@@ -615,10 +541,10 @@ export default function TrustRadarDashboard() {
                 <div className="grid size-10 place-items-center rounded-xl bg-rose-50 text-rose-600">
                   <ShieldAlert className="size-5" />
                 </div>
-                <Sparkline data={h.conflictsWeekly} color="#E11D48" />
+                {h.conflictsWeekly && <Sparkline data={h.conflictsWeekly} color="#E11D48" />}
               </div>
               <div className="mt-6">
-                <p className="tr-display text-5xl font-extrabold leading-none text-[#2B0B45]">{h.conflicts}</p>
+                <p className="tr-display text-5xl font-extrabold leading-none text-[#2B0B45] transition-all">{h.conflicts}</p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">Active conflicts</p>
                 <Delta value={h.conflictsDelta} goodWhenDown />
               </div>
@@ -630,12 +556,12 @@ export default function TrustRadarDashboard() {
                 <div className="grid size-10 place-items-center rounded-xl bg-amber-50 text-amber-600">
                   <FileQuestion className="size-5" />
                 </div>
-                <Sparkline data={h.gapsWeekly} color="#F59E0B" />
+                {h.gapsWeekly && <Sparkline data={h.gapsWeekly} color="#F59E0B" />}
               </div>
               <div className="mt-6">
-                <p className="tr-display text-5xl font-extrabold leading-none text-[#2B0B45]">{h.gaps}</p>
+                <p className="tr-display text-5xl font-extrabold leading-none text-[#2B0B45] transition-all">{h.gaps}</p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">Identified gaps</p>
-                <span className="text-xs font-semibold text-amber-700">{h.gapsRising} rising fast</span>
+                <span className="text-xs font-semibold text-amber-700 transition-all">{h.gapsRising} rising fast</span>
               </div>
             </div>
           </div>
@@ -644,181 +570,183 @@ export default function TrustRadarDashboard() {
         {/* Conflicts + gaps */}
         <div className="mt-12 grid gap-8 lg:grid-cols-3">
           {/* Conflict detection */}
-          <section className="lg:col-span-2" aria-labelledby="conflict-title">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 id="conflict-title" className="tr-display text-2xl font-bold text-[#2B0B45]">
-                  Conflict detection
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Showing the {data.conflicts.length} highest priority of {h.conflicts} conflicts.
-                </p>
+          {conflict && (
+            <section className="lg:col-span-2" aria-labelledby="conflict-title">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 id="conflict-title" className="tr-display text-2xl font-bold text-[#2B0B45]">
+                    Conflict detection
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500 transition-all">
+                    Showing the {conflicts.length} highest priority of {h.conflicts} conflicts.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Conflict switcher */}
-            <div
-              role="tablist"
-              aria-label="Conflicts to review"
-              className="mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-slate-200/50 p-1"
-            >
-              {data.conflicts.map((c) => {
-                const selected = c.id === conflict.id
-                return (
-                  <button
-                    key={c.id}
-                    role="tab"
-                    type="button"
-                    aria-selected={selected}
-                    onClick={() => setActiveId(c.id)}
-                    className={`flex min-w-[180px] flex-1 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition-all ${FOCUS} ${
-                      selected
-                        ? 'bg-white text-[#2B0B45] shadow-[0_1px_3px_rgba(43,11,69,0.15)]'
-                        : 'text-slate-500 hover:bg-white/60 hover:text-slate-800'
-                    }`}
-                  >
-                    <span
-                      className={`size-2 shrink-0 rounded-full ${c.severity === 'High' ? 'bg-[#D3077F]' : 'bg-amber-400'}`}
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">{c.topic}</span>
-                    {escalation[c.id] === 'sent' && <Check className="ml-auto size-4 shrink-0 text-emerald-600" />}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div
-              key={conflict.id}
-              className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(43,11,69,0.05),0_32px_64px_-32px_rgba(43,11,69,0.45)]"
-            >
-              {/* Plum header */}
-              <div className="relative overflow-hidden bg-[#2B0B45] px-6 py-7 text-white sm:px-8">
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{ background: 'radial-gradient(90% 140% at 100% 0%, rgba(211,7,127,0.6), transparent 60%)' }}
-                />
-                <div className="relative">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span
-                      className={`rounded-full px-2.5 py-1 font-semibold ${
-                        conflict.severity === 'High' ? 'bg-[#D3077F] text-white' : 'bg-amber-400 text-amber-950'
+              {/* Conflict switcher */}
+              <div
+                role="tablist"
+                aria-label="Conflicts to review"
+                className="mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-slate-200/50 p-1"
+              >
+                {conflicts.map((c) => {
+                  const selected = c.id === conflict.id
+                  return (
+                    <button
+                      key={c.id}
+                      role="tab"
+                      type="button"
+                      aria-selected={selected}
+                      onClick={() => setActiveId(c.id)}
+                      className={`flex min-w-[180px] flex-1 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition-all ${FOCUS} ${
+                        selected
+                          ? 'bg-white text-[#2B0B45] shadow-[0_1px_3px_rgba(43,11,69,0.15)]'
+                          : 'text-slate-500 hover:bg-white/60 hover:text-slate-800'
                       }`}
                     >
-                      {conflict.severity} priority
-                    </span>
-                    <span className="text-white/70">{conflict.detected}</span>
-                  </div>
-                  <h3 className="tr-display mt-3 text-3xl font-bold leading-tight sm:text-[34px]">
-                    {conflict.topic}
-                  </h3>
-                  <p className="mt-1.5 text-sm text-white/70">
-                    Applies to: {conflict.context}. Two sources give different answers.
-                  </p>
-                  <ul className="mt-5 flex flex-wrap gap-2">
-                    {conflict.flags.map((f) => (
-                      <li
-                        key={f}
-                        className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 ring-1 ring-inset ring-white/15 backdrop-blur-sm"
-                      >
-                        <ShieldAlert className="size-3.5 text-[#FF8AD1]" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                      <span
+                        className={`size-2 shrink-0 rounded-full ${c.severity === 'High' ? 'bg-[#D3077F]' : 'bg-amber-400'}`}
+                        aria-hidden="true"
+                      />
+                      <span className="truncate">{c.topic}</span>
+                      {escalation[c.id] === 'sent' && <Check className="ml-auto size-4 shrink-0 text-emerald-600" />}
+                    </button>
+                  )
+                })}
               </div>
 
-              {/* Split view */}
-              <div className="bg-[#FBFAFD] p-4 sm:p-8">
-                <div className="relative grid gap-4 md:grid-cols-2 md:gap-14">
+              <div
+                key={conflict.id}
+                className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(43,11,69,0.05),0_32px_64px_-32px_rgba(43,11,69,0.45)]"
+              >
+                {/* Plum header */}
+                <div className="relative overflow-hidden bg-[#2B0B45] px-6 py-7 text-white sm:px-8">
                   <div
-                    className="pointer-events-none absolute inset-y-0 left-1/2 hidden border-l border-dashed border-slate-300 md:block"
-                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0"
+                    style={{ background: 'radial-gradient(90% 140% at 100% 0%, rgba(211,7,127,0.6), transparent 60%)' }}
                   />
-                  <div
-                    className="absolute left-1/2 top-[132px] z-10 hidden size-12 -translate-x-1/2 place-items-center rounded-full bg-[#2B0B45] text-xl font-bold text-white shadow-[0_8px_24px_-6px_rgba(43,11,69,0.7)] ring-4 ring-[#FBFAFD] md:grid"
-                    role="img"
-                    aria-label={`Answers conflict, ${conflict.difference}`}
-                  >
-                    ≠
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span
+                        className={`rounded-full px-2.5 py-1 font-semibold ${
+                          conflict.severity === 'High' ? 'bg-[#D3077F] text-white' : 'bg-amber-400 text-amber-950'
+                        }`}
+                      >
+                        {conflict.severity} priority
+                      </span>
+                      <span className="text-white/70">{conflict.detected}</span>
+                    </div>
+                    <h3 className="tr-display mt-3 text-3xl font-bold leading-tight sm:text-[34px]">
+                      {conflict.topic}
+                    </h3>
+                    <p className="mt-1.5 text-sm text-white/70">
+                      Applies to: {conflict.context}. Two sources give different answers.
+                    </p>
+                    <ul className="mt-5 flex flex-wrap gap-2">
+                      {conflict.flags.map((f) => (
+                        <li
+                          key={f}
+                          className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 ring-1 ring-inset ring-white/15 backdrop-blur-sm"
+                        >
+                          <ShieldAlert className="size-3.5 text-[#FF8AD1]" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                </div>
 
-                  <SourceCard key={`${conflict.id}-a`} source={conflict.sources[0]} label="Source A" />
-
-                  <div className="flex items-center justify-center gap-3 md:hidden" aria-hidden="true">
-                    <span className="h-px flex-1 border-t border-dashed border-slate-300" />
-                    <span className="grid size-10 place-items-center rounded-full bg-[#2B0B45] text-lg font-bold text-white">
+                {/* Split view */}
+                <div className="bg-[#FBFAFD] p-4 sm:p-8">
+                  <div className="relative grid gap-4 md:grid-cols-2 md:gap-14">
+                    <div
+                      className="pointer-events-none absolute inset-y-0 left-1/2 hidden border-l border-dashed border-slate-300 md:block"
+                      aria-hidden="true"
+                    />
+                    <div
+                      className="absolute left-1/2 top-[132px] z-10 hidden size-12 -translate-x-1/2 place-items-center rounded-full bg-[#2B0B45] text-xl font-bold text-white shadow-[0_8px_24px_-6px_rgba(43,11,69,0.7)] ring-4 ring-[#FBFAFD] md:grid"
+                      role="img"
+                      aria-label={`Answers conflict, ${conflict.difference}`}
+                    >
                       ≠
-                    </span>
-                    <span className="h-px flex-1 border-t border-dashed border-slate-300" />
+                    </div>
+
+                    <SourceCard key={`${conflict.id}-a`} source={conflict.sources[0]} label="Source A" />
+
+                    <div className="flex items-center justify-center gap-3 md:hidden" aria-hidden="true">
+                      <span className="h-px flex-1 border-t border-dashed border-slate-300" />
+                      <span className="grid size-10 place-items-center rounded-full bg-[#2B0B45] text-lg font-bold text-white">
+                        ≠
+                      </span>
+                      <span className="h-px flex-1 border-t border-dashed border-slate-300" />
+                    </div>
+
+                    <SourceCard key={`${conflict.id}-b`} source={conflict.sources[1]} label="Source B" />
                   </div>
 
-                  <SourceCard key={`${conflict.id}-b`} source={conflict.sources[1]} label="Source B" />
-                </div>
-
-                {/* Verdict */}
-                <div className="mt-6 flex gap-4 rounded-2xl border border-[#D3077F]/20 bg-[#FDF2F8] p-5">
-                  <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#D3077F] shadow-sm">
-                    <Scale className="size-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-[#2B0B45]">
-                      Why this needs review ({conflict.difference})
-                    </p>
-                    <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-slate-700">{conflict.verdict}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action footer */}
-              <div className="flex flex-col gap-4 border-t border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
-                    BE
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{conflict.expert}</p>
-                    <p className="text-xs text-slate-500">Usually replies within 1 working day</p>
+                  {/* Verdict */}
+                  <div className="mt-6 flex gap-4 rounded-2xl border border-[#D3077F]/20 bg-[#FDF2F8] p-5">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#D3077F] shadow-sm">
+                      <Scale className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#2B0B45]">
+                        Why this needs review ({conflict.difference})
+                      </p>
+                      <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-slate-700">{conflict.verdict}</p>
+                    </div>
                   </div>
                 </div>
 
-                <div aria-live="polite" className="sm:text-right">
-                  {escState === 'sent' && (
-                    <p className="tr-pop mb-2 text-xs font-medium text-emerald-700 sm:mb-1">
-                      Sent. You will be notified when the answer is confirmed.
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleEscalate}
-                    disabled={!!escState}
-                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all sm:w-auto ${FOCUS} ${
-                      escState === 'sent'
-                        ? 'cursor-default bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
-                        : escState === 'sending'
-                          ? 'cursor-wait bg-[#D3077F]/80 text-white'
-                          : 'bg-[#D3077F] text-white shadow-[0_10px_24px_-10px_rgba(211,7,127,0.8)] hover:bg-[#B90670] hover:shadow-[0_14px_28px_-10px_rgba(211,7,127,0.9)] active:scale-[0.98]'
-                    }`}
-                  >
-                    {escState === 'sent' ? (
-                      <>
-                        <Check className="size-4" /> Sent to expert
-                      </>
-                    ) : escState === 'sending' ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> Sending
-                      </>
-                    ) : (
-                      <>
-                        <Send className="size-4" /> Escalate to expert
-                      </>
+                {/* Action footer */}
+                <div className="flex flex-col gap-4 border-t border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                  <div className="flex items-center gap-3">
+                    <div className="grid size-10 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                      BE
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{conflict.expert}</p>
+                      <p className="text-xs text-slate-500">Usually replies within 1 working day</p>
+                    </div>
+                  </div>
+
+                  <div aria-live="polite" className="sm:text-right">
+                    {escState === 'sent' && (
+                      <p className="tr-pop mb-2 text-xs font-medium text-emerald-700 sm:mb-1">
+                        Sent. You will be notified when the answer is confirmed.
+                      </p>
                     )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEscalate(conflict.id)}
+                      disabled={!!escState}
+                      className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all sm:w-auto ${FOCUS} ${
+                        escState === 'sent'
+                          ? 'cursor-default bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
+                          : escState === 'sending'
+                            ? 'cursor-wait bg-[#D3077F]/80 text-white'
+                            : 'bg-[#D3077F] text-white shadow-[0_10px_24px_-10px_rgba(211,7,127,0.8)] hover:bg-[#B90670] hover:shadow-[0_14px_28px_-10px_rgba(211,7,127,0.9)] active:scale-[0.98]'
+                      }`}
+                    >
+                      {escState === 'sent' ? (
+                        <>
+                          <Check className="size-4" /> Sent to expert
+                        </>
+                      ) : escState === 'sending' ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> Sending
+                        </>
+                      ) : (
+                        <>
+                          <Send className="size-4" /> Escalate to expert
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Knowledge gaps */}
           <section className="lg:col-span-1" aria-labelledby="gaps-title">
@@ -831,28 +759,30 @@ export default function TrustRadarDashboard() {
 
             <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(43,11,69,0.04),0_20px_40px_-28px_rgba(43,11,69,0.35)]">
               <ul className="divide-y divide-slate-100">
-                {data.gaps.map((gap) => {
+                {gaps.map((gap) => {
                   const state = drafts[gap.id]
                   return (
                     <li key={gap.id} className="p-5 transition-colors hover:bg-[#FDF8FC]">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-[15px] font-semibold leading-snug text-slate-900">{gap.query}</h3>
-                        <Sparkline
-                          data={gap.weekly}
-                          color={gap.trend === 'up' ? '#D3077F' : '#94A3B8'}
-                          w={64}
-                          h={24}
-                        />
+                        {gap.weekly && (
+                          <Sparkline
+                            data={gap.weekly}
+                            color={gap.trend === 'up' ? '#D3077F' : '#94A3B8'}
+                            w={64}
+                            h={24}
+                          />
+                        )}
                       </div>
 
                       <div className="mt-3 flex items-center gap-3">
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                           <div
-                            className="tr-grow h-full rounded-full bg-[#2B0B45]/70"
+                            className="tr-grow h-full rounded-full bg-[#2B0B45]/70 transition-all duration-500"
                             style={{ width: `${(gap.count / maxCount) * 100}%` }}
                           />
                         </div>
-                        <span className="text-xs font-semibold text-slate-700">{gap.count} searches</span>
+                        <span className="text-xs font-semibold text-slate-700 transition-all">{gap.count} searches</span>
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
