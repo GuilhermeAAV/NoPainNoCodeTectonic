@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 
 const links = [
   { to: '/', label: 'Accueil' },
@@ -8,6 +9,14 @@ const links = [
 ]
 
 export default function Header() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
     <header className="header">
       <div className="container header__inner">
@@ -20,6 +29,14 @@ export default function Header() {
               {link.label}
             </NavLink>
           ))}
+          {user?.role === 'admin' && <NavLink to="/admin/profiles">Profils</NavLink>}
+          {user ? (
+            <button type="button" className="header__logout" onClick={handleLogout}>
+              Déconnexion
+            </button>
+          ) : (
+            <NavLink to="/login">Connexion</NavLink>
+          )}
         </nav>
       </div>
     </header>

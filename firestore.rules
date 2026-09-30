@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // Un utilisateur lit son propre profil, l'admin lit tous les profils.
+    // Aucune écriture côté client : tout passe par les Cloud Functions.
+    match /profiles/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if false;
+    }
+
+    // Tout le reste est fermé par défaut
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
