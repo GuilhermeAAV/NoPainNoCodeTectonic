@@ -13,7 +13,23 @@
     { "email": "emma.laurent@docexchange.demo", "firstName": "Emma", "lastName": "Laurent", "clearance": 80, "persona": "Software architect", "expertise": { "developpement": 19, "infrastructure": 3 } },
     { "email": "julie.moreau@docexchange.demo", "firstName": "Julie", "lastName": "Moreau", "clearance": 65, "persona": "HR business partner", "expertise": { "rh": 14, "operations": 3 } },
     { "email": "lucas.simon@docexchange.demo", "firstName": "Lucas", "lastName": "Simon", "clearance": 60, "persona": "Operations manager", "expertise": { "operations": 16, "rh": 2 } },
-    { "email": "alex.durand@docexchange.demo", "firstName": "Alex", "lastName": "Durand", "clearance": 60, "persona": "Senior, no expertise yet: asks for reviews", "expertise": {} },
-    { "email": "jordan.blanc@docexchange.demo", "firstName": "Jordan", "lastName": "Blanc", "clearance": 30, "persona": "Intermediate: only sees trusted documents", "expertise": {} }
+    { "email": "nadia.mercier@docexchange.demo", "firstName": "Nadia", "lastName": "Mercier", "clearance": 100, "persona": "CISO", "expertise": { "cybersecurite": 20, "infrastructure": 5 } },
+    { "email": "karim.aouad@docexchange.demo", "firstName": "Karim", "lastName": "Aouad", "clearance": 90, "persona": "Penetration tester", "expertise": { "cybersecurite": 18, "conformite": 3 } },
+    { "email": "chloe.vasseur@docexchange.demo", "firstName": "Chloé", "lastName": "Vasseur", "clearance": 95, "persona": "General counsel", "expertise": { "droit-affaires": 18, "conformite": 6 } },
+    { "email": "antoine.rey@docexchange.demo", "firstName": "Antoine", "lastName": "Rey", "clearance": 85, "persona": "Contracts manager", "expertise": { "droit-affaires": 12, "donnees-personnelles": 4 } },
+    { "email": "manon.faure@docexchange.demo", "firstName": "Manon", "lastName": "Faure", "clearance": 90, "persona": "Privacy counsel", "expertise": { "donnees-personnelles": 19, "droit-affaires": 3 } },
+    { "email": "olivier.chevalier@docexchange.demo", "firstName": "Olivier", "lastName": "Chevalier", "clearance": 80, "persona": "Privacy analyst", "expertise": { "donnees-personnelles": 11, "cybersecurite": 3 } },
+    { "email": "elise.garnier@docexchange.demo", "firstName": "Élise", "lastName": "Garnier", "clearance": 95, "persona": "Chief risk officer", "expertise": { "conformite": 16, "finance": 4 } },
+    { "email": "samuel.nguyen@docexchange.demo", "firstName": "Samuel", "lastName": "Nguyen", "clearance": 90, "persona": "Head of accounting", "expertise": { "finance": 18, "fiscalite": 5 } },
+    { "email": "claire.dumont@docexchange.demo", "firstName": "Claire", "lastName": "Dumont", "clearance": 100, "persona": "CFO", "expertise": { "finance": 16, "conformite": 5 } },
+    { "email": "remi.fontaine@docexchange.demo", "firstName": "Rémi", "lastName": "Fontaine", "clearance": 80, "persona": "Tax manager", "expertise": { "fiscalite": 20, "droit-affaires": 3 } },
+    { "email": "sophie.lambert@docexchange.demo", "firstName": "Sophie", "lastName": "Lambert", "clearance": 85, "persona": "HR director", "expertise": { "rh": 17, "operations": 4 } },
+    { "email": "mehdi.kaci@docexchange.demo", "firstName": "Mehdi", "lastName": "Kaci", "clearance": 80, "persona": "Employment law specialist", "expertise": { "rh": 19 } },
+    { "email": "victor.leroy@docexchange.demo", "firstName": "Victor", "lastName": "Leroy", "clearance": 95, "persona": "Cloud architect", "expertise": { "infrastructure": 17, "developpement": 5 } },
+    { "email": "anais.perrin@docexchange.demo", "firstName": "Anaïs", "lastName": "Perrin", "clearance": 85, "persona": "Principal engineer", "expertise": { "developpement": 18, "operations": 3 } },
+    { "email": "baptiste.roussel@docexchange.demo", "firstName": "Baptiste", "lastName": "Roussel", "clearance": 90, "persona": "Head of operations", "expertise": { "operations": 18, "infrastructure": 4 } },
+    { "email": "ines.dubois@docexchange.demo", "firstName": "Inès", "lastName": "Dubois", "clearance": 80, "persona": "Incident manager", "expertise": { "operations": 19, "cybersecurite": 2 } },
+    { "email": "alex.durand@docexchange.demo", "firstName": "Alex", "lastName": "Durand", "clearance": 60, "persona": "Senior, no expertise yet: asks for reviews", "expertise": { } },
+    { "email": "jordan.blanc@docexchange.demo", "firstName": "Jordan", "lastName": "Blanc", "clearance": 30, "persona": "Intermediate: only sees trusted documents", "expertise": { } }
   ]
 }

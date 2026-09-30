@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
-import { collection, doc, getDocs, getFirestore, query, setDoc, where, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, getFirestore, query, setDoc, where, writeBatch } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 
 const [email, password] = process.argv.slice(2)
@@ -24,6 +24,8 @@ await signInWithEmailAndPassword(auth, email, password)
 
 // Barème identique à functions/index.js
 const domainPoints = (clearance) => Math.max(1, Math.round(clearance / 10))
+const GRADES = [['A', 150], ['B', 80], ['C', 40], ['D', 20], ['E', 5], ['F', 0]]
+const gradeFor = (points) => GRADES.find(([, min]) => points >= min)[0]
 
 async function ensureAccount(account) {
   const { firstName, lastName, email, clearance } = account
@@ -39,6 +41,7 @@ async function ensureAccount(account) {
 }
 
 const rows = []
+const baselines = new Map()
 for (const account of demo.accounts) {
   const { uid, created } = await ensureAccount(account)
   // Expertise de départ : rebuildExpertise l'ajoute aux validations réelles du compte
@@ -49,6 +52,7 @@ for (const account of demo.accounts) {
     ]),
   )
   await setDoc(doc(db, 'expertise', uid), { baseline }, { merge: true })
+  baselines.set(uid, baseline)
   rows.push({ email: account.email, clearance: account.clearance, persona: account.persona, statut: created ? 'créé' : 'existant' })
 }
 
@@ -61,8 +65,27 @@ if (!stale.empty) {
 }
 
 const rebuilt = (await httpsCallable(functions, 'rebuildExpertise')()).data
+
+// Une version déployée de rebuildExpertise antérieure à la gestion de « baseline » efface l'expertise de départ :
+// on la réapplique alors ici, par-dessus les validations réelles recalculées
+let restored = 0
+for (const [uid, baseline] of baselines) {
+  const ref = doc(db, 'expertise', uid)
+  const snap = await getDoc(ref)
+  if (snap.get('baseline')) continue
+  const domains = { ...(snap.get('domains') ?? {}) }
+  for (const [domain, base] of Object.entries(baseline)) {
+    const current = domains[domain] ?? { points: 0, validations: 0, lastValidatedAt: null }
+    const points = current.points + base.points
+    domains[domain] = { ...current, points, validations: current.validations + base.validations, grade: gradeFor(points) }
+  }
+  await setDoc(ref, { baseline, domains }, { merge: true })
+  restored++
+}
 console.table(rows)
 console.log(`Mot de passe commun : ${demo.password}`)
 console.log(`${stale.size} anciennes fiches fictives supprimées.`)
 console.log(`Notes recalculées pour ${rebuilt.profiles} profils (${rebuilt.validations} validations).`)
+if (restored)
+  console.log(`⚠ rebuildExpertise déployé est ancien : expertise de départ réappliquée sur ${restored} comptes. Pensez à npm run deploy:backend.`)
 process.exit(0)

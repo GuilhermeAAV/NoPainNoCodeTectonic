@@ -355,7 +355,7 @@
   .demo-accounts { margin-top: 8px; }
   .demo-accounts h2 { margin: 0 0 4px; }
   .demo-accounts > .muted { margin: 0 0 16px; }
-  .demo-accounts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .demo-accounts ul { list-style: none; margin: 0; padding: 0 4px 0 0; display: grid; gap: 6px; max-height: 440px; overflow-y: auto; overscroll-behavior: contain; }
   .demo-accounts button { width: 100%; display: grid; gap: 2px; text-align: left; font: inherit; padding: 10px 12px; border: 1px solid var(--color-border-soft); border-radius: var(--radius); background: var(--color-surface-2); cursor: pointer; transition: border-color 0.15s, background-color 0.15s; }
   .demo-accounts button:hover:not(:disabled) { border-color: rgba(211, 7, 127, 0.35); background: var(--magenta-soft); }
   .demo-accounts button:disabled { opacity: 0.6; cursor: wait; }

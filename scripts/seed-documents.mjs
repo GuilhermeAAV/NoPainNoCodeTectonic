@@ -1,10 +1,11 @@
 // Insère des documents de démonstration (métadonnées + contenu base64 + historique).
+// Relançable : un document déjà présent (même nom de fichier, ex. aml.md) est ignoré.
 // Usage : npm run seed -- <email admin> <mot de passe>
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
-import { Timestamp, collection, doc, getFirestore, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { Timestamp, collection, doc, getDocs, getFirestore, query, serverTimestamp, where, writeBatch } from 'firebase/firestore'
 
 const [email, password] = process.argv.slice(2)
 if (!email || !password) {
@@ -125,7 +126,13 @@ function makeHistory(score, lastDelta, signals, days = 120) {
   }))
 }
 
-const ids = Object.fromEntries(seed.map(([key]) => [key, doc(collection(db, 'documents')).id]))
+// Documents déjà insérés par un passage précédent : on garde leur id (pour les conflits) sans les réécrire
+const existing = await getDocs(query(collection(db, 'documents'), where('score', '>=', 0)))
+const existingIds = new Map(existing.docs.map((d) => [d.get('fileName'), d.id]))
+const ids = Object.fromEntries(
+  seed.map(([key]) => [key, existingIds.get(`${key}.md`) ?? doc(collection(db, 'documents')).id]),
+)
+let inserted = 0
 // Un lot Firestore est limité à 500 écritures
 let batch = writeBatch(db)
 let pending = 0
@@ -140,6 +147,8 @@ const write = async (ref, data) => {
 let eventCount = 0
 
 for (const [key, title, description, category, tags, score, delta, , [ev, su, views, conf, contra], conflicts, review] of seed) {
+  if (existingIds.has(`${key}.md`)) continue
+  inserted++
   const text = `# ${title}\n\n${description}\n`
   const bytes = Buffer.from(text, 'utf8')
   const sha256 = createHash('sha256').update(bytes).digest('hex')
@@ -185,5 +194,5 @@ for (const [key, title, description, category, tags, score, delta, , [ev, su, vi
 }
 
 if (pending) await batch.commit()
-console.log(`Inserted ${seed.length} documents and ${eventCount} trust score events.`)
+console.log(`Inserted ${inserted} documents and ${eventCount} trust score events (${seed.length - inserted} already present).`)
 process.exit(0)
