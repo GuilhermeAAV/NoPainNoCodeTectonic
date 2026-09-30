@@ -424,17 +424,18 @@ export default function TrustRadarDashboard() {
       {simulating && <SimulatePanel onClose={() => setSimulating(false)} onConflict={setActiveId} />}
 
       {/* Titre de page : l'en-tête global du site (Header) remplace l'ancien en-tête collant */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-[#2B0B45] text-white shadow-[0_8px_20px_-8px_rgba(43,11,69,0.8)]">
-            <Radar className="size-5 text-[#FF5CB8]" />
+      <div>
+        {/* Knowledge health */}
+        <section aria-labelledby="health-title">
+          <div className="mb-5">
+            <h2 id="health-title" className="tr-display text-2xl font-bold text-[#2B0B45]">
+              Knowledge health
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 transition-all">
+              Based on {h.scannedDocs?.toLocaleString()} documents across SharePoint, Teams and the payroll wiki.
+            </p>
           </div>
-          <div>
-            <h1 className="tr-display m-0 text-3xl font-extrabold leading-none text-[#2B0B45]">Trust Radar</h1>
-            <p className="m-0 mt-1 text-xs text-slate-500">Knowledge Copilot for SD Worx</p>
-          </div>
-        </div>
-
+                <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4 sm:gap-6">
             <button 
               onClick={() => setSimulating(true)}
@@ -449,41 +450,8 @@ export default function TrustRadarDashboard() {
             >
               Reset Data
             </button>
-            <div className="hidden items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 py-1.5 pl-3 pr-4 sm:flex">
-              <span className="relative flex size-2.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-70 motion-reduce:animate-none" />
-                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
-              </span>
-              <span className="text-xs font-semibold text-slate-700">All sources syncing</span>
-              <span className="text-xs text-slate-400">Last scan {h.lastScan}</span>
-            </div>
-            <div className="flex items-center gap-3 border-l border-slate-200 pl-4 sm:pl-6">
-              <div className="hidden text-right sm:block">
-                <p className="text-sm font-semibold leading-none text-slate-900">Admin User</p>
-                <p className="mt-1 text-xs text-slate-500">Payroll policy manager</p>
-              </div>
-              <div
-                className="grid size-9 place-items-center rounded-full text-xs font-bold text-white ring-2 ring-white"
-                style={{ background: 'linear-gradient(135deg,#D3077F,#6D28D9)' }}
-                aria-label="Admin User"
-              >
-                AU
-              </div>
-            </div>
           </div>
         </div>
-
-      <div>
-        {/* Knowledge health */}
-        <section aria-labelledby="health-title">
-          <div className="mb-5">
-            <h2 id="health-title" className="tr-display text-2xl font-bold text-[#2B0B45]">
-              Knowledge health
-            </h2>
-            <p className="mt-1 text-sm text-slate-500 transition-all">
-              Based on {h.scannedDocs?.toLocaleString()} documents across SharePoint, Teams and the payroll wiki.
-            </p>
-          </div>
 
           <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr_1fr]">
             {/* Reliability */}
